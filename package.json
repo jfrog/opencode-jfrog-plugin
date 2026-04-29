@@ -1,10 +1,10 @@
 {
-  "name": "{{moduleName}}",
+  "name": "opencode-jfrog-plugin",
   "version": "0.0.1",
-  "description": "{{description}}",
+  "description": "JFrog Plugin for seamless integration to Opencode",
   "author": {
-    "name": "{{authorName}}",
-    "email": "{{authorEmail}}"
+    "name": "JFrog",
+    "email": "carmith@jfrog.com"
   },
   "type": "module",
   "exports": {
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "{{repositoryUrl}}"
+    "url": "https://github.com/jfrog/opencode-jfrog-plugin.git"
   },
   "publishConfig": {
     "access": "public"
@@ -36,5 +36,8 @@
     "prettier": "^3.2.4",
     "typescript-eslint": "^8.47.0",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.4.6"
   }
 }
