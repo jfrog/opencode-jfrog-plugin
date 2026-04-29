@@ -156,7 +156,8 @@ const pullSkills = async( $, directory, log: (msg: string) => void): Promise<{ s
     } 
 }
 
-export const JfrogOpencodePlugin: Plugin = async ({ project, client, $, directory, worktree }) => {    
+/** OpenCode loads plugins via the `server` export (see `PluginModule` in @opencode-ai/plugin). */
+const jfrogOpencodePlugin: Plugin = async ({ project, client, $, directory, worktree }) => {
     const logDir = dirname(LOG_FILE);
     if (!existsSync(logDir)) {
         mkdirSync(logDir, { recursive: true });
@@ -199,4 +200,7 @@ export const JfrogOpencodePlugin: Plugin = async ({ project, client, $, director
             }
         },
     }
-}
+};
+
+export const server = jfrogOpencodePlugin;
+export const JfrogOpencodePlugin = jfrogOpencodePlugin;
