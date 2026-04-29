@@ -33,7 +33,7 @@ The plugin configuration looks like this:
 
 ## How this works
 Once opencode starts it runs the plugin. The plugin then:
-1. Pulls a few base skills that allow the integration from the developer opencode instance into JFrog (can be found under `<project-root>/.opencode/skills`)
+1. Pulls a few base skills that allow the integration from the developer opencode instance into JFrog (can be found under `~/.config/opencode/skills`)
 2. Pulls integration instructions adding LLM hints on how to integrate with JFrog (can be found under `<project-root>/.jfrog/instructions`)
 3. Appends integration instructions into the runtime opencode config
 
@@ -54,7 +54,7 @@ Within opencode, when tasks require a JFrog skill, the triggered skill will guid
 ### Integration setup artifacts
 LLM instructions are automatically created at `<project-root>/.jfrog/instructions`
 Package management mappings are created at `<project-root>/.jfrog/local/package-managers.json`
-Skills are created under `<project-root>/.opencode/skills`
+Skills are created under `~/.config/opencode/skills`
 
 ## Troubleshooting
 The JFrog plugin pulls a minimal set of JFrog integration skills and LLM instructions that allow for the integration. It also adds the instructions file into the opencode project configuration file.
