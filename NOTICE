@@ -1,0 +1,45 @@
+JFrog opencode integration
+(c) 2026 JFrog Ltd.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+=============================================================================
+
+This product includes software developed by:
+
+Opencode:
+Licensed under the MIT License
+https://github.com/anomalyco/opencode
+
+Bun: 
+Based on Bun module template: https://github.com/zenobi-us/bun-module
+Developed by https://bun.sh/
+Licensed under the MIT License
+
+=============================================================================
+
+Third-Party Dependencies:
+
+This project declares the following direct Npm dependencies (see package.json). License terms for each package
+apply; see the respective project repositories or NPM metadata for full notices.
+
+-   @opencode-ai/plugin
+    Copyright © 2026 Anomaly under https://anoma.ly/ — MIT License
+    https://github.com/anomalyco/opencode
+
+- Bun module
+  Licensed under the MIT license
+  https://bun.com/docs/project/license
+
+
+=============================================================================
