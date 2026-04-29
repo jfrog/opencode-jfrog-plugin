@@ -1,27 +1,31 @@
-import type { Plugin, PluginInput } from '@opencode-ai/plugin';
+import type { Plugin } from '@opencode-ai/plugin';
 import { appendFileSync, createWriteStream, readFileSync, existsSync, mkdirSync } from 'fs';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { dirname, join } from 'path';
 
 const LOG_FILE = join(process.cwd(), '.opencode', 'event-log.txt');
-const SKILLS_REGISTRY_URL = 'https://releases.jfrog.io/artifactory/jfrog-skills/';
+const SKILLS_REGISTRY_URL = 'https://releases.jfrog.io/artifactory/jfrog-skills';
 const INSTRUCTIONS_REGISTRY_URL =
   'https://releases.jfrog.io/artifactory/run/ai/integrations/opencode/JFROG-INTEGRATION-MANAGEMENT.md';
+const SKILLS_TO_INSTALL_URL =
+  'https://releases.jfrog.io/artifactory/run/ai/integrations/opencode/JFROG-OPENCODE_SKILLS.json';
 
 const fetchAndSaveFile = async (
   url: string,
   destPath: string,
-  log: (msg: string) => void
+  log: (_msg: string) => void
 ): Promise<{ success: boolean; error?: string }> => {
   const dir = dirname(destPath);
   log('Fetching file from ' + url + ' and saving to ' + destPath);
   if (!existsSync(dir)) {
+    log('Creating skills directory: ' + dir);
     mkdirSync(dir, { recursive: true });
   }
   // fetch largfile using stream and save to file
   const response = await fetch(url);
   if (!response.body) {
+    log(`Failed to fetch Skill ${name} from ${url}, No response body from ${url}`);
     return { success: false, error: `No response body from ${url}` };
   }
   const writer = createWriteStream(destPath);
@@ -38,13 +42,10 @@ const extractZip = async (
   skillZipFile: string,
   skillName: string,
   skillZipDir: string,
-  log: (msg: string) => void
+  log: (_msg: string) => void
 ): Promise<{ success: boolean; error?: string }> => {
   // extract zip file, and check command response
-  const unzipResponse =
-    await $`unzip -o ${skillZipFile} -d ${directory}/.opencode/skills/${skillName}`
-      .nothrow()
-      .quiet();
+  const unzipResponse = await $`unzip -o ${skillZipFile} -d ${skillZipDir}`.nothrow().quiet();
   if (unzipResponse.exitCode !== 0) {
     log(`Failed to extract JFrog ${skillName} skill: ${unzipResponse.stderr}`);
     return {
@@ -54,8 +55,8 @@ const extractZip = async (
   }
   log(`JFrog ${skillName} skill extracted!`);
   // remove zip file and its version directory
-  await $`rm -fR ${skillZipDir}`;
-  log(`Jfrog ${skillName} skill directory removed!`);
+  await $`rm -fR ${skillZipFile}`;
+  log(`Jfrog ${skillName} skill zip file removed!`);
   return { success: true };
 };
 
@@ -63,8 +64,8 @@ const setupPackageManagers = async (
   client: any,
   $: any,
   directory: any,
-  _sessionId: unknown,
-  log: (msg: string) => void
+  sessionId: any,
+  log: (_msg: string) => void
 ) => {
   // check if jfrog-cli is installed using jf --version
 
@@ -143,9 +144,9 @@ const setupPackageManagers = async (
   return { success: success, message: errorMessages + ' ' + successMessages };
 };
 const pullSkills = async (
-  $: PluginInput['$'],
-  directory: string,
-  log: (msg: string) => void
+  $: any,
+  directory: any,
+  log: (_msg: string) => void
 ): Promise<{ success: boolean; failedSkills?: string[] }> => {
   const failedSkills: string[] = [];
   // pull JFrog instructions from Artifactory
@@ -162,33 +163,57 @@ const pullSkills = async (
     );
     if (!result.success) {
       log(
-        'Failed to import JFrog integration management instructions for Opencode: ' + result.error
+        `Failed to import JFrog integration management instructions for Opencode: ${result.error}`
       );
       failedSkills.push('JFROG-INTEGRATION-MANAGEMENT');
     }
     log('JFrog integration management instructions imported!');
   }
+  // fetch base skills list
+  const response = await fetch(SKILLS_TO_INSTALL_URL);
+  if (!response.body) {
+    log(
+      `Failed to fetch base skills list from ${SKILLS_TO_INSTALL_URL}, No response body from ${SKILLS_TO_INSTALL_URL}`
+    );
+    return {
+      success: false,
+      failedSkills: [`ALL Skills failed to fetch, No response body from ${SKILLS_TO_INSTALL_URL}, cannot install skills`],
+    };
+  }
+  //read skills_body from response
+  const skillsBody = await response.json();
+  /*
+  * Example skills body:
+  {
+    "skills": [
+      {
+        "name": "skill-install",
+        "version": "0.0.1"
+      }
+    ]
+  }
+  */
+  const skillsToPull = skillsBody.skills.map((skill: any) => ({
+    name: skill.name,
+    version: skill.version,
+  }));
 
-  // add array of skills to pull with their versions
-  const skillsToPull = [
-    { name: 'skill-install', version: '0.0.1' },
-    { name: 'skill-publish', version: '0.0.1' },
-    { name: 'jfrog-cli', version: '0.0.1' },
-    { name: 'opencode-jfrog-mcp', version: '0.0.1' },
-    { name: 'jfrog-setup-package-managers', version: '0.0.1' },
-    { name: 'jfrog-curation', version: '0.0.1' },
-    { name: 'jfrog-packages', version: '0.0.1' },
-  ];
+  // log process.env.OPENCODE_HOME
+  log(`HOME: ${process.env.HOME}`);
+  // check skills dir exists on user's home directory
+  const skillsDir = join(process.env.HOME || '~', '.config', 'opencode', 'skills');
+  if (!existsSync(skillsDir)) {
+    mkdirSync(skillsDir, { recursive: true });
+    log(`Skills directory created: ${skillsDir}`);
+  }
   for (const skill of skillsToPull) {
-    const skillExists = await $`test -d ${directory}/.opencode/skills/${skill.name}/`
-      .nothrow()
-      .quiet();
+    const skillExists = await $`test -d ~/.config/opencode/skills/${skill.name}/`.nothrow().quiet();
     if (skillExists.exitCode !== 0) {
-      log('JFrog skill not found, importing them locally!');
+      log(`JFrog ${skill.name} skill not found, importing them locally!`);
       const skillName = skill.name;
       const skillVersion = skill.version;
-      const skillZipDir = `${directory}/.opencode/skills/${skillName}/${skillVersion}`;
-      const skillZipFile = `${skillZipDir}/${skillName}-${skillVersion}.zip`;
+      const skillZipDir = join(skillsDir, skillName, skillVersion);
+      const skillZipFile = join(skillZipDir, `${skillName}-${skillVersion}.zip`);
       const result = await fetchAndSaveFile(
         `${SKILLS_REGISTRY_URL}/${skillName}/${skillVersion}/${skillName}-${skillVersion}.zip`,
         `${skillZipFile}`,
@@ -236,9 +261,9 @@ const jfrogOpencodePlugin: Plugin = async ({ client, $, directory }) => {
   };
   log('JfrogOpencodePlugin starting...');
   // check if JFrog skills management exists and if they do not, import them locally
-  await pullSkills($, directory, log);
-  // TODO add user message if skills are not imported (inspect pullSkills result)
-
+  const pullSkillsResponse = await pullSkills($, directory, log);
+  // TODO consider user message if skills are not imported (inspect pullSkillsResponse) 
+  log('pullSkillsResponse=' + JSON.stringify(pullSkillsResponse));
   return {
     config: async (config) => {
       config.instructions = config.instructions || [];
