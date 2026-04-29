@@ -24,8 +24,8 @@ const fetchAndSaveFile = async (
   }
   // fetch largfile using stream and save to file
   const response = await fetch(url);
-  if (!response.body) {
-    log(`Failed to fetch Skill ${name} from ${url}, No response body from ${url}`);
+  if (!response.ok || !response.body) {
+    log(`Failed to fetch file from ${url}, status: ${response.status}, No response body from ${url}`);
     return { success: false, error: `No response body from ${url}` };
   }
   const writer = createWriteStream(destPath);
@@ -33,7 +33,8 @@ const fetchAndSaveFile = async (
     Readable.fromWeb(response.body as unknown as Parameters<typeof Readable.fromWeb>[0]),
     writer
   );
-  return { success: true };
+
+  return { success: true, error: undefined };
 };
 
 const extractZip = async (
@@ -193,6 +194,14 @@ const pullSkills = async (
     ]
   }
   */
+  if (!skillsBody.skills) {
+    log(`Failed to fetch base skills list from ${SKILLS_TO_INSTALL_URL}, No skills body from ${SKILLS_TO_INSTALL_URL}`);
+    return {
+      success: false,
+      failedSkills: [`ALL Skills failed to fetch, No skills body from ${SKILLS_TO_INSTALL_URL}, cannot install skills`],
+    };
+  }
+
   const skillsToPull = skillsBody.skills.map((skill: any) => ({
     name: skill.name,
     version: skill.version,
@@ -234,9 +243,10 @@ const pullSkills = async (
         if (!unzipResult.success) {
           log(`Failed to extract ${skillName} skill: ${unzipResult.error}`);
           failedSkills.push(skillName);
+        } else {
+          log(`${skillName} skill extracted!`);
         }
       }
-      log(`${skillName} skill extracted!`);
     }
   }
   // return success if no failed skills, otherwise return failed skills
