@@ -25,7 +25,9 @@ const fetchAndSaveFile = async (
   // fetch largfile using stream and save to file
   const response = await fetch(url);
   if (!response.ok || !response.body) {
-    log(`Failed to fetch file from ${url}, status: ${response.status}, No response body from ${url}`);
+    log(
+      `Failed to fetch file from ${url}, status: ${response.status}, No response body from ${url}, response: ${JSON.stringify(response)}`
+    );
     return { success: false, error: `No response body from ${url}` };
   }
   const writer = createWriteStream(destPath);
@@ -178,7 +180,9 @@ const pullSkills = async (
     );
     return {
       success: false,
-      failedSkills: [`ALL Skills failed to fetch, No response body from ${SKILLS_TO_INSTALL_URL}, cannot install skills`],
+      failedSkills: [
+        `ALL Skills failed to fetch, No response body from ${SKILLS_TO_INSTALL_URL}, cannot install skills`,
+      ],
     };
   }
   //read skills_body from response
@@ -195,10 +199,14 @@ const pullSkills = async (
   }
   */
   if (!skillsBody.skills) {
-    log(`Failed to fetch base skills list from ${SKILLS_TO_INSTALL_URL}, No skills body from ${SKILLS_TO_INSTALL_URL}`);
+    log(
+      `Failed to fetch base skills list from ${SKILLS_TO_INSTALL_URL}, No skills body from ${SKILLS_TO_INSTALL_URL}`
+    );
     return {
       success: false,
-      failedSkills: [`ALL Skills failed to fetch, No skills body from ${SKILLS_TO_INSTALL_URL}, cannot install skills`],
+      failedSkills: [
+        `ALL Skills failed to fetch, No skills body from ${SKILLS_TO_INSTALL_URL}, cannot install skills`,
+      ],
     };
   }
 
@@ -272,7 +280,7 @@ const jfrogOpencodePlugin: Plugin = async ({ client, $, directory }) => {
   log('JfrogOpencodePlugin starting...');
   // check if JFrog skills management exists and if they do not, import them locally
   const pullSkillsResponse = await pullSkills($, directory, log);
-  // TODO consider user message if skills are not imported (inspect pullSkillsResponse) 
+  // TODO consider user message if skills are not imported (inspect pullSkillsResponse)
   log('pullSkillsResponse=' + JSON.stringify(pullSkillsResponse));
   return {
     config: async (config) => {
