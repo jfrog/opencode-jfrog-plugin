@@ -1,0 +1,52 @@
+{
+  "name": "@jfrog/opencode-jfrog-plugin",
+  "version": "0.0.1",
+  "description": "JFrog Plugin for seamless integration to Opencode",
+  "author": {
+    "name": "JFrog",
+    "email": "carmith@jfrog.com"
+  },
+  "type": "module",
+  "module": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "keywords": [
+    "jfrog",
+    "artifactory",
+    "opencode",
+    "plugin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jfrog/opencode-jfrog-plugin.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "src/version.ts"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^20.11.5",
+    "@typescript-eslint/eslint-plugin": "8.47.0",
+    "@typescript-eslint/parser": "8.47.0",
+    "bun-types": "latest",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-prettier": "^5.1.3",
+    "prettier": "^3.2.4",
+    "typescript-eslint": "^8.47.0",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.4.6"
+  }
+}
