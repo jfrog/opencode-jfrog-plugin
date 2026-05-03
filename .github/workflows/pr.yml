@@ -28,7 +28,7 @@ jobs:
           JF_URL: https://${{ vars.JF_URL }}/
           JF_PROJECT: carmit
         with:
-            oidc-provider-name: github-carmit-project-1
+            oidc-provider-name: github-oidc
 
       - name: Setup Tooling
         uses: jdx/mise-action@d6e32c1796099e0f1f3ac741c220a8b7eae9e5dd
