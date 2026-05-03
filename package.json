@@ -1,6 +1,6 @@
 {
   "name": "@jfrog/opencode-jfrog-plugin",
-  "version": "0.0.1-next.11",
+  "version": "0.0.1",
   "description": "JFrog Plugin for seamless integration to Opencode",
   "author": {
     "name": "JFrog",
@@ -14,6 +14,12 @@
       "default": "./dist/index.js"
     }
   },
+  "keywords": [
+    "jfrog",
+    "artifactory",
+    "opencode",
+    "plugin"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jfrog/opencode-jfrog-plugin.git"

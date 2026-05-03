@@ -31,18 +31,16 @@ jobs:
         with:
             oidc-provider-name: github-oidc
 
+      - name: setup jfrog npm repo
+        run: |
+          jf npm-config --repo-resolve=carmit-carmit-npm-virtual 
+
       - name: Setup Tooling
         uses: jdx/mise-action@d6e32c1796099e0f1f3ac741c220a8b7eae9e5dd
         with:
           install: true
           cache: true
           experimental: true
-
-      - name: setup jfrog npm repo
-        run: |
-          npm config set registry https://ctoa.jfrog.io/artifactory/api/npm/carmit-carmit-npm-virtual/
-          npm config set //ctoa.jfrog.io/artifactory/api/npm/carmit-carmit-npm-virtual/:_authToken ${{ steps.setup-cli.outputs.oidc-token }}
-      
 
       - name: Run Checks
         run: |
