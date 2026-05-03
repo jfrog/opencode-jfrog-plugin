@@ -1,5 +1,14 @@
 import type { Plugin } from '@opencode-ai/plugin';
-import { appendFileSync, createWriteStream, readFileSync, existsSync, mkdirSync } from 'fs';
+import {
+  appendFileSync,
+  createWriteStream,
+  readFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from 'fs';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { dirname, join } from 'path';
@@ -41,9 +50,9 @@ const fetchAndSaveFile = async (
 
 const extractZip = async (
   $: any,
-  directory: any,
   skillZipFile: string,
   skillName: string,
+  skillVersion: string,
   skillZipDir: string,
   log: (_msg: string) => void
 ): Promise<{ success: boolean; error?: string }> => {
@@ -53,11 +62,11 @@ const extractZip = async (
     log(`Failed to extract JFrog ${skillName} skill: ${unzipResponse.stderr}`);
     return {
       success: false,
-      error: `Failed to extract JFrog ${skillName} skill: ${unzipResponse.stderr}`,
+      error: `Failed to extract JFrog ${skillName}-${skillVersion} skill: ${unzipResponse.stderr}`,
     };
   }
-  log(`JFrog ${skillName} skill extracted!`);
-  // remove zip file and its version directory
+  log(`JFrog ${skillName}-${skillVersion} skill extracted!`);
+  // remove zip file
   await $`rm -fR ${skillZipFile}`;
   log(`Jfrog ${skillName} skill zip file removed!`);
   return { success: true };
@@ -223,12 +232,16 @@ const pullSkills = async (
     mkdirSync(skillsDir, { recursive: true });
     log(`Skills directory created: ${skillsDir}`);
   }
+
+  // pull skills one by one
   for (const skill of skillsToPull) {
-    const skillExists = await $`test -d ~/.config/opencode/skills/${skill.name}/`.nothrow().quiet();
-    if (skillExists.exitCode !== 0) {
-      log(`JFrog ${skill.name} skill not found, importing them locally!`);
+    const keepVersion = String(skill.version).trim();
+    const skillInstallDir = join(skillsDir, skill.name, keepVersion);
+    const skillExists = existsSync(skillInstallDir) && statSync(skillInstallDir).isDirectory();
+    if (!skillExists) {
+      log(`JFrog ${skill.name}-${keepVersion} skill not found, importing them locally!`);
       const skillName = skill.name;
-      const skillVersion = skill.version;
+      const skillVersion = keepVersion;
       const skillZipDir = join(skillsDir, skillName, skillVersion);
       const skillZipFile = join(skillZipDir, `${skillName}-${skillVersion}.zip`);
       const result = await fetchAndSaveFile(
@@ -242,9 +255,9 @@ const pullSkills = async (
       } else {
         const unzipResult = await extractZip(
           $,
-          directory,
           skillZipFile,
           skillName,
+          skillVersion,
           skillZipDir,
           log
         );
@@ -252,9 +265,12 @@ const pullSkills = async (
           log(`Failed to extract ${skillName} skill: ${unzipResult.error}`);
           failedSkills.push(skillName);
         } else {
-          log(`${skillName} skill extracted!`);
+          log(`${skillName} skill handling completed!`);
+          pruneNonManifestSkillVersions(skillsDir, skillName, keepVersion, log);
         }
       }
+    } else {
+      log(`JFrog ${skill.name}-${keepVersion} skill already present.`);
     }
   }
   // return success if no failed skills, otherwise return failed skills
@@ -262,6 +278,54 @@ const pullSkills = async (
     return { success: false, failedSkills: failedSkills };
   } else {
     return { success: true };
+  }
+};
+
+/** Runs whenever a skill is satisfied (fresh install or already on disk). Not inside import-only path. */
+const pruneNonManifestSkillVersions = (
+  skillsDir: string,
+  skillName: string,
+  keepVersion: string,
+  log: (_msg: string) => void
+) => {
+  const skillRoot = join(skillsDir, skillName);
+  if (!existsSync(skillRoot)) {
+    log(`No local version dirs for ${skillName} under ${skillRoot}`);
+    return;
+  }
+  let entries: string[];
+  try {
+    entries = readdirSync(skillRoot);
+  } catch (e) {
+    log(`Could not list versions under ${skillRoot}: ${e}`);
+    return;
+  }
+  log(
+    `Found version dirs for ${skillName}: ${entries.join(', ')} (latest version: ${keepVersion})`
+  );
+  for (const olderVersion of entries) {
+    const versionPath = join(skillRoot, olderVersion);
+    let isDir = false;
+    try {
+      isDir = statSync(versionPath).isDirectory();
+    } catch {
+      continue;
+    }
+    if (!isDir) {
+      continue;
+    }
+    if (olderVersion === keepVersion) {
+      continue;
+    }
+    log(
+      `Removing non-manifest version ${olderVersion} of ${skillName} (manifest: ${keepVersion})...`
+    );
+    try {
+      rmSync(versionPath, { recursive: true, force: true });
+      log(`Removed ${skillName}/${olderVersion}`);
+    } catch (e) {
+      log(`Failed to remove ${skillName}/${olderVersion}: ${e}`);
+    }
   }
 };
 
