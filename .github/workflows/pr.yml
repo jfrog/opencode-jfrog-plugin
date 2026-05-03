@@ -35,9 +35,8 @@ jobs:
         run: |
           echo "Setting up jfrog npm repo"
           # create bunfig.toml file with the following content:
-          echo "[npm]" > bunfig.toml
-          echo "registry = \"https://ctoa.jfrog.io/artifactory/api/npm/carmit-carmit-npm-virtual/\"" >> bunfig.toml
-          echo "_auth = \"${{ steps.setup-cli.outputs.oidc-token }}\"" >> bunfig.toml
+          echo "[install]" > bunfig.toml
+          echo "registry = { token = \"${{ steps.setup-cli.outputs.oidc-token }}\", url = \"https://ctoa.jfrog.io/artifactory/api/npm/carmit-carmit-npm-virtual/\" }" >> bunfig.toml
           # add always-auth
           echo "always-auth = true" >> bunfig.toml
           cat bunfig.toml
