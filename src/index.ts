@@ -1,3 +1,4 @@
+// (c) JFrog Ltd. (2026)
 import type { Plugin } from '@opencode-ai/plugin';
 import {
   appendFileSync,
