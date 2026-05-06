@@ -369,17 +369,19 @@ const jfrogOpencodePlugin: Plugin = async ({ client, $, directory }) => {
           responses.push(pkgMngrResponse);
         }
         log('pkgMngrResponse=' + pkgMngrResponse?.message);
-
-        await client.tui.showToast({
-          body: {
-            message: responses
-              .filter((s) => !s.success)
-              .map((s) => s.message)
-              .join('\n\n'),
-            variant: 'error',
-            duration: 10000,
-          },
-        });
+        // print if there are any errors
+        if (responses.filter((s) => !s.success).length > 0) {
+          await client.tui.showToast({
+            body: {
+              message: responses
+                .filter((s) => !s.success)
+                .map((s) => s.message)
+                .join('\n\n'),
+              variant: 'error',
+              duration: 10000,
+            },
+          });
+        }
       }
     },
   };

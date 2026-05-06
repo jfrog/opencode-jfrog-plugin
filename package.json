@@ -1,6 +1,6 @@
 {
   "name": "@jfrog/opencode-jfrog-plugin",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "JFrog Plugin for seamless integration to Opencode",
   "author": {
     "name": "JFrog",
