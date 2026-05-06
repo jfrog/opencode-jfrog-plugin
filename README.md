@@ -27,7 +27,7 @@ Preferably set the plugin globally for all their developers using the Opencode r
 The plugin configuration looks like this:
 ```
 "plugin": [
-   "@jfrog/opencode-jfrog-plugin@0.0.2"
+   "@jfrog/opencode-jfrog-plugin@0.0.3"
  ],
 ```
 

@@ -17,9 +17,9 @@ import { dirname, join } from 'path';
 const LOG_FILE = join(process.cwd(), '.opencode', 'event-log.txt');
 const SKILLS_REGISTRY_URL = 'https://releases.jfrog.io/artifactory/jfrog-skills';
 const INSTRUCTIONS_REGISTRY_URL =
-  'https://releases.jfrog.io/artifactory/run/ai/integrations/opencode/JFROG-INTEGRATION-MANAGEMENT.md';
+  'https://releases.jfrog.io/artifactory/run/ai/integrations/opencode/opencode-JFROG-INTEGRATION-MANAGEMENT-[RELEASE].md';
 const SKILLS_TO_INSTALL_URL =
-  'https://releases.jfrog.io/artifactory/run/ai/integrations/opencode/JFROG-OPENCODE_SKILLS.json';
+  'https://releases.jfrog.io/artifactory/run/ai/integrations/opencode/opencode-JFROG-OPENCODE_SKILLS-[RELEASE].json';
 
 const fetchAndSaveFile = async (
   url: string,

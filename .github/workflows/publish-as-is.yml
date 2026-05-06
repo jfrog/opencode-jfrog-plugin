@@ -1,0 +1,33 @@
+name: Publish public Package version
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [publish-package-as-is]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: jdx/mise-action@d6e32c1796099e0f1f3ac741c220a8b7eae9e5dd
+        with:
+          install: true
+          cache: true
+          experimental: true
+
+      - name: Build
+        run: mise run build
+
+      - name: Publish to npm with OIDC
+        run: |
+          echo "Publishing version as is"
+          mise run publish  
