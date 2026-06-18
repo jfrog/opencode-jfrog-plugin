@@ -32,8 +32,7 @@
   "files": [
     "dist",
     "skills",
-    "sync-skills-vendor.json",
-    "src/version.ts"
+    "sync-skills-vendor.json"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
