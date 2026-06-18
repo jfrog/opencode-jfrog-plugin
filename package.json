@@ -18,7 +18,8 @@
     "jfrog",
     "artifactory",
     "opencode",
-    "plugin"
+    "plugin",
+    "skills"
   ],
   "repository": {
     "type": "git",
@@ -30,10 +31,15 @@
   },
   "files": [
     "dist",
+    "skills",
+    "sync-skills-vendor.json",
     "src/version.ts"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "scripts": {
+    "sync-skills": "node scripts/sync-skills.mjs"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/node": "^20.11.5",
