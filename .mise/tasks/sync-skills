@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#MISE description="Vendor JFrog skills from jfrog/jfrog-skills (see sync-skills-vendor.json)"
+node scripts/sync-skills.mjs
