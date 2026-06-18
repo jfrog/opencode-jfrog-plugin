@@ -111,6 +111,13 @@ const jfrogOpencodePlugin: Plugin = async ({ client }) => {
       appendFileSync(LOG_FILE, message + '\n', 'utf-8');
     }
   };
+  // Fire-and-forget: showToast never resolves in headless sessions (no TUI to ack it), so awaiting it
+  // would hang the config hook. Durable signals always go through log() regardless of UI.
+  const toast = (message: string, variant: 'error' | 'info'): void => {
+    void client.tui
+      .showToast({ body: { message, variant, duration: 10000 } })
+      .catch(() => undefined);
+  };
   log('JfrogOpencodePlugin starting...');
 
   migrateLegacyManagedSkills(log);
@@ -127,9 +134,7 @@ const jfrogOpencodePlugin: Plugin = async ({ client }) => {
           `JFrog: bundled skills not found at ${BUNDLED_SKILLS_DIR}. ` +
           'The plugin package may be broken; reinstall @jfrog/opencode-jfrog-plugin.';
         log('ERROR ' + message);
-        await client.tui.showToast({
-          body: { message, variant: 'error', duration: 10000 },
-        });
+        toast(message, 'error');
         return;
       }
 
@@ -139,13 +144,10 @@ const jfrogOpencodePlugin: Plugin = async ({ client }) => {
       log('config.skills.paths=' + JSON.stringify(cfg.skills.paths));
 
       // R2 interim nudge until package-manager setup is handled by a skill.
-      await client.tui.showToast({
-        body: {
-          message: 'JFrog: run `jf setup <pm>` to configure package managers against Artifactory.',
-          variant: 'info',
-          duration: 10000,
-        },
-      });
+      toast(
+        'JFrog: run `jf setup <pm>` to configure package managers against Artifactory.',
+        'info'
+      );
     },
   };
 };
