@@ -143,6 +143,22 @@ const jfrogOpencodePlugin: Plugin = async ({ client }) => {
       }
       log('config.skills.paths=' + JSON.stringify(cfg.skills.paths));
 
+      // Register the JFrog Platform remote MCP server. OpenCode handles OAuth lazily on first use,
+      // so no auth config is needed and there is no network call on load.
+      const platformUrl = process.env.JFROG_URL ?? process.env.JFROG_PLATFORM_URL;
+      if (platformUrl) {
+        const host = platformUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        const url = `https://${host}/mcp`;
+        cfg.mcp = cfg.mcp ?? {};
+        // Non-destructive: never overwrite a user-defined `jfrog` MCP entry.
+        if (!cfg.mcp.jfrog) {
+          cfg.mcp.jfrog = { type: 'remote', url, enabled: true };
+          log('registered jfrog MCP: ' + url);
+        }
+      } else {
+        log('JFROG_URL/JFROG_PLATFORM_URL not set; skipping JFrog MCP registration');
+      }
+
       // R2 interim nudge until package-manager setup is handled by a skill.
       toast(
         'JFrog: run `jf setup <pm>` to configure package managers against Artifactory.',

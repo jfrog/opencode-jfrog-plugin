@@ -40,6 +40,12 @@ function skillsOf(config: Config): { paths?: string[] } | undefined {
   return (config as { skills?: { paths?: string[] } }).skills;
 }
 
+type McpEntry = { type?: string; url?: string; enabled?: boolean };
+
+function mcpOf(config: Config): Record<string, McpEntry> | undefined {
+  return (config as { mcp?: Record<string, McpEntry> }).mcp;
+}
+
 describe('jfrog opencode plugin exports', () => {
   it('exposes the same plugin as server and JfrogOpencodePlugin', () => {
     expect(server).toBe(JfrogOpencodePlugin);
@@ -178,4 +184,72 @@ describe('vendored skills content sanity (V9)', () => {
       expect(name).toBe(skill);
     });
   }
+});
+
+// JFrog Platform remote MCP injection via the config hook.
+describe('JfrogOpencodePlugin MCP injection', () => {
+  let homeDir: string;
+  let prevHome: string | undefined;
+  let prevUrl: string | undefined;
+  let prevPlatformUrl: string | undefined;
+
+  beforeEach(() => {
+    prevHome = process.env.HOME;
+    prevUrl = process.env.JFROG_URL;
+    prevPlatformUrl = process.env.JFROG_PLATFORM_URL;
+    homeDir = mkdtempSync(join(tmpdir(), 'jfrog-plugin-home-'));
+    process.env.HOME = homeDir;
+    delete process.env.JFROG_URL;
+    delete process.env.JFROG_PLATFORM_URL;
+  });
+
+  afterEach(() => {
+    const restore = (key: string, value: string | undefined): void => {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    };
+    restore('HOME', prevHome);
+    restore('JFROG_URL', prevUrl);
+    restore('JFROG_PLATFORM_URL', prevPlatformUrl);
+    rmSync(homeDir, { recursive: true, force: true });
+  });
+
+  it('registers the JFrog remote MCP from JFROG_URL (normalizing scheme/trailing slash)', async () => {
+    process.env.JFROG_URL = 'https://example.jfrog.io/';
+    const hooks = await server(pluginInput());
+    const config = {} as Config;
+    await hooks.config?.(config);
+    expect(mcpOf(config)?.jfrog).toEqual({
+      type: 'remote',
+      url: 'https://example.jfrog.io/mcp',
+      enabled: true,
+    });
+  });
+
+  it('falls back to JFROG_PLATFORM_URL when JFROG_URL is unset', async () => {
+    process.env.JFROG_PLATFORM_URL = 'example.jfrog.io';
+    const hooks = await server(pluginInput());
+    const config = {} as Config;
+    await hooks.config?.(config);
+    expect(mcpOf(config)?.jfrog?.url).toBe('https://example.jfrog.io/mcp');
+  });
+
+  it('does not register a JFrog MCP when no platform URL env is set', async () => {
+    const hooks = await server(pluginInput());
+    const config = {} as Config;
+    await hooks.config?.(config);
+    expect(mcpOf(config)?.jfrog).toBeUndefined();
+  });
+
+  it('does not overwrite a user-defined jfrog MCP entry', async () => {
+    process.env.JFROG_URL = 'https://example.jfrog.io';
+    const hooks = await server(pluginInput());
+    const existing: McpEntry = { type: 'remote', url: 'https://user.example/mcp', enabled: false };
+    const config = { mcp: { jfrog: existing } } as unknown as Config;
+    await hooks.config?.(config);
+    expect(mcpOf(config)?.jfrog).toEqual(existing);
+  });
 });
