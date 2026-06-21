@@ -38,6 +38,7 @@
   "types": "dist/index.d.ts",
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@opencode-ai/plugin": "^1.4.6",
     "@types/node": "^20.11.5",
     "@typescript-eslint/eslint-plugin": "8.47.0",
     "@typescript-eslint/parser": "8.47.0",
@@ -48,8 +49,5 @@
     "prettier": "^3.2.4",
     "typescript-eslint": "^8.47.0",
     "vitest": "^3.2.4"
-  },
-  "dependencies": {
-    "@opencode-ai/plugin": "^1.4.6"
   }
 }
