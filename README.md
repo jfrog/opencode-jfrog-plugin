@@ -36,9 +36,12 @@ Add the plugin to your OpenCode config (`opencode.json`):
 
 ```json
 {
-  "plugin": ["@jfrog/opencode-jfrog-plugin@0.1.0"]
+  "plugin": ["@jfrog/opencode-jfrog-plugin@<version>"]
 }
 ```
+
+Replace `<version>` with the latest published version. Omitting `@<version>` entirely tracks the latest
+release.
 
 For an organization-wide rollout, set the plugin in OpenCode's
 [remote configuration](https://opencode.ai/docs/config/#remote) so every developer gets it
