@@ -15,7 +15,7 @@ The vendoring source is declared in `sync-skills-vendor.json` at the repo root:
 ```json
 {
   "repo": "jfrog/jfrog-skills",
-  "pin": "v0.11.0",
+  "pin": "v0.14.0",
   "paths": ["skills"]
 }
 ```
@@ -23,7 +23,7 @@ The vendoring source is declared in `sync-skills-vendor.json` at the repo root:
 | Field   | Meaning                                                                                     |
 | ------- | ------------------------------------------------------------------------------------------- |
 | `repo`  | The upstream GitHub repository (`owner/name`) to vendor from.                               |
-| `pin`   | The exact upstream ref to vendor (a tag, e.g. `v0.11.0`). Pin to a tag for reproducibility. |
+| `pin`   | The exact upstream ref to vendor (a tag, e.g. `v0.14.0`). Pin to a tag for reproducibility. |
 | `paths` | The paths within the upstream repo to copy into this repo root. Currently just `skills`.    |
 
 ## How the sync works
