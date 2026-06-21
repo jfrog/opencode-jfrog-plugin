@@ -50,9 +50,9 @@
 
 ## Testing
 
-- Framework: **vitest** with `describe` & `it` blocks
+- Framework: **bun:test** with `describe` & `it` blocks
 - Style: Descriptive nested test cases with clear expectations
-- Assertion library: `expect()` (vitest)
+- Assertion library: `expect()` (bun:test)
 
 ## Memory
 
