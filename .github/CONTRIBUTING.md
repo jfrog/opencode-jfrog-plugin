@@ -38,4 +38,4 @@ Thank you for your interest in contributing!
 
 This project uses ESLint and Prettier. Run `mise run lint:fix` to auto-fix issues.
 
-See [AGENTS.md](./AGENTS.md) for detailed code style guidelines.
+See [AGENTS.md](../AGENTS.md) for detailed code style guidelines.

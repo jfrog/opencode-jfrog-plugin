@@ -70,7 +70,7 @@ older versions installed under `~/.config/opencode/skills`.
 ## Updating the bundled skills
 
 The skills are vendored at a pinned version. Updating them is a build-time step and **requires a new
-plugin release** (there are no runtime skill updates). See [VENDOR.md](./VENDOR.md) for the pin-bump
+plugin release** (there are no runtime skill updates). See [docs/VENDOR.md](./docs/VENDOR.md) for the pin-bump
 workflow (`mise run sync-skills`).
 
 ## Troubleshooting
@@ -117,15 +117,15 @@ Tasks are run with [mise](https://mise.jdx.dev/):
 - `mise run lint` — lint with ESLint
 - `mise run lint:fix` — auto-fix lint issues
 - `mise run format` — format with Prettier
-- `mise run sync-skills` — re-vendor the bundled skills (see [VENDOR.md](./VENDOR.md))
+- `mise run sync-skills` — re-vendor the bundled skills (see [docs/VENDOR.md](./docs/VENDOR.md))
 
 ## Release
 
-See [RELEASE.md](./RELEASE.md) for how to release a new version.
+See [docs/RELEASE.md](./docs/RELEASE.md) for how to release a new version.
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md). Please file issues or open pull
+Contributions are welcome! See [CONTRIBUTING.md](./.github/CONTRIBUTING.md). Please file issues or open pull
 requests on the GitHub repository.
 
 ## License
