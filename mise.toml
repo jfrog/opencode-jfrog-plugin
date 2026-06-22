@@ -10,3 +10,61 @@ hk = "1.26.0"
 _.path = [
     "{{config_root}}/node_modules/.bin",
 ]
+
+# Colon-namespaced tasks live here (not in .mise/tasks/*): mise sanitizes ':' to '_'
+# in task FILE names, so a file named 'pack:check' would only be runnable as 'pack_check'.
+# Defining them in mise.toml preserves the literal 'mise run <name>:check' invocation.
+
+[tasks."sync-skills:check"]
+description = "Fail if the vendored skills/ tree drifts from the sync-skills-vendor.json pin"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+node scripts/sync-skills.mjs
+if [ -n "$(git status --porcelain -- skills)" ]; then
+  echo "❌ Vendored skills/ are out of sync with sync-skills-vendor.json."
+  echo "   Run 'mise run sync-skills' and commit the result."
+  git --no-pager diff --stat -- skills
+  git status --porcelain -- skills
+  exit 1
+fi
+echo "✓ Vendored skills/ match the pin in sync-skills-vendor.json"
+"""
+
+[tasks."pack:check"]
+description = "Assert the npm tarball is self-contained (dist + skills) and free of scratch files"
+depends = ["build"]
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+files="$(npm pack --dry-run --json 2>/dev/null | jq -r '.[0].files[].path')"
+
+require() {
+  if ! grep -qxF -- "$1" <<<"$files"; then
+    echo "❌ tarball is missing a required file: $1"
+    echo "--- tarball contents ---"
+    echo "$files"
+    exit 1
+  fi
+}
+
+forbid() {
+  local matches
+  matches="$(grep -E -- "$1" <<<"$files" || true)"
+  if [ -n "$matches" ]; then
+    echo "❌ tarball contains forbidden file(s) matching /$1/:"
+    echo "$matches"
+    exit 1
+  fi
+}
+
+require "dist/index.js"
+require "skills/jfrog/SKILL.md"
+require "skills/jfrog-package-safety-and-download/SKILL.md"
+
+forbid "(^|/)[^/]*-TEST-PLAN\\.md$"
+forbid "(^|/)[^/]*-TEST-RESULTS\\.md$"
+forbid "^\\.opencode/"
+
+echo "✓ tarball contents OK (dist + skills present; no scratch files)"
+"""

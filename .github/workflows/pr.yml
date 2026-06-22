@@ -31,6 +31,10 @@ jobs:
       - name: Run Checks
         run: |
           mise run setup
+          mise run sync-skills:check
           mise run lint
+          mise run typecheck
           mise run test
           mise run build
+          mise run pkgjsonlint
+          mise run pack:check
