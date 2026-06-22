@@ -9,17 +9,6 @@ const LOG_FILE = join(process.cwd(), '.opencode', 'event-log.txt');
 // dist/index.js -> ../skills after build/install; src/index.ts -> ../skills in dev.
 const BUNDLED_SKILLS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills');
 
-// Same resolution as the skills dir: dist/index.js -> ../templates, src/index.ts -> ../templates.
-const MCP_MANAGEMENT_TEMPLATE = join(
-  dirname(fileURLToPath(import.meta.url)),
-  '..',
-  'templates',
-  'jfrog-mcp-management.md'
-);
-
-const ACCOUNT_SETTING_PATH =
-  '/ml/core/api/v1/administration/account-settings/mcp_gateway_plugin_enabled';
-
 // Skills previously managed (downloaded/unzipped) by older versions of this plugin.
 const OLD_MANAGED_SKILLS = [
   'skill-install',
@@ -32,65 +21,7 @@ const OLD_MANAGED_SKILLS = [
 ];
 
 type Logger = (_message: string) => void;
-type ConfigWithSkills = Config & { skills?: { paths?: string[] }; instructions?: string[] };
-
-type AccountSettingResponse = {
-  settings?: { mcpGatewayPluginEnabled?: { value?: boolean } };
-};
-
-// New JFROG_* env names take precedence over the legacy JF_* names.
-const readEnv = (newName: string, oldName: string): string | undefined =>
-  process.env[newName] ?? process.env[oldName];
-
-/**
- * Gate Agent Guard on the account setting, mirroring the Claude plugin. Bounded (5s) and FAIL-CLOSED:
- * any missing token, error, timeout, or non-ok response is treated as "not enabled" so load never hangs.
- */
-const isAgentGuardEnabled = async (log: Logger): Promise<boolean> => {
-  const baseUrl = readEnv('JFROG_URL', 'JF_URL');
-  const token = readEnv('JFROG_ACCESS_TOKEN', 'JF_ACCESS_TOKEN');
-  if (!baseUrl || !token) {
-    log('agent-guard: JFROG_URL/JFROG_ACCESS_TOKEN not set; skipping gateway setting check');
-    return false;
-  }
-  const url = baseUrl.replace(/\/+$/, '') + ACCOUNT_SETTING_PATH;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      log(`agent-guard: settings request returned HTTP ${response.status}`);
-      return false;
-    }
-    const data = (await response.json()) as AccountSettingResponse;
-    return data?.settings?.mcpGatewayPluginEnabled?.value === true;
-  } catch (e) {
-    const reason = e instanceof Error && e.name === 'AbortError' ? 'timeout' : String(e);
-    log('agent-guard: settings request failed: ' + reason);
-    return false;
-  } finally {
-    clearTimeout(timeout);
-  }
-};
-
-/** Resolve whether to inject the MCP-management template, honoring the force flags first. */
-const shouldInjectAgentGuard = async (log: Logger): Promise<boolean> => {
-  if (process.env._JF_AGENT_GUARD_FORCE_DISABLE === 'true') {
-    log('agent-guard: force-disabled; skipping MCP-management instructions');
-    return false;
-  }
-  if (process.env.JF_AGENT_GUARD_FORCE_ENABLE === 'true') {
-    log(
-      'agent-guard: force-enabled; injecting MCP-management instructions without the setting check'
-    );
-    return true;
-  }
-  return isAgentGuardEnabled(log);
-};
+type ConfigWithSkills = Config & { skills?: { paths?: string[] } };
 
 const isNonEmptyDir = (dir: string): boolean => {
   if (!existsSync(dir)) {
@@ -211,17 +142,6 @@ const jfrogOpencodePlugin: Plugin = async ({ client }) => {
         cfg.skills.paths.push(BUNDLED_SKILLS_DIR);
       }
       log('config.skills.paths=' + JSON.stringify(cfg.skills.paths));
-
-      // Agent Guard (Claude model): when the account setting is enabled, inject the MCP-management
-      // template so the agent installs catalog MCPs via `npx @jfrog/agent-guard`. The plugin itself
-      // does NOT register any config.mcp entry. Gating is bounded + fail-closed (never hangs load).
-      if (await shouldInjectAgentGuard(log)) {
-        cfg.instructions = cfg.instructions ?? [];
-        if (!cfg.instructions.includes(MCP_MANAGEMENT_TEMPLATE)) {
-          cfg.instructions.push(MCP_MANAGEMENT_TEMPLATE);
-          log('agent-guard: injected MCP-management template: ' + MCP_MANAGEMENT_TEMPLATE);
-        }
-      }
 
       // R2 interim nudge until package-manager setup is handled by a skill.
       toast(

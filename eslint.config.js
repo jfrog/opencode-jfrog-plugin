@@ -23,9 +23,6 @@ export default tseslint.config(
         process: 'readonly',
         Buffer: 'readonly',
         fetch: 'readonly',
-        AbortController: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
         // Bun globals
         Bun: 'readonly',
       },
