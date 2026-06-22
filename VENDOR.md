@@ -64,6 +64,9 @@ The script is dependency-free Node ESM and makes no changes outside the vendored
 4. Cut a plugin release so the new skills ship to users. Until a release is published, installed plugins
    keep using the previously vendored skills.
 
+> CI runs `mise run sync-skills:check`, which re-vendors and fails if the committed `skills/` tree drifts
+> from the pin. If that check fails on a PR, run `mise run sync-skills` and commit the result.
+
 ## Notes
 
 - Keep `skills/` flat: `SKILL.md` must sit directly under `skills/<skill-name>/` (no version

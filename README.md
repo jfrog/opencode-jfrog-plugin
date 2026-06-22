@@ -17,31 +17,36 @@ The plugin bundles two canonical skills, vendored (pinned) from
 The skills ship **with the plugin** (vendored and pinned). They are **not** downloaded at runtime, so
 the plugin works offline and the skill set is reproducible for a given plugin version.
 
+The plugin is **self-contained**: everything it needs is in the published npm tarball (`dist/` + the
+vendored `skills/`). There are no runtime downloads and no dependency on `releases.jfrog.io` or any other
+external artifact host.
+
 ## Prerequisites
 
 - A [JFrog Platform](https://jfrog.com) instance you can authenticate against.
-- [OpenCode](https://opencode.ai/) installed.
-  - Verified against OpenCode **1.17.7**. The exact minimum supported version is not yet established —
-    see [Open questions](#open-questions).
+- [OpenCode](https://opencode.ai/) installed (verified against OpenCode **1.17.7** and newer, which
+  honors `config.skills.paths` in object form).
 - For running the skills at runtime, the following must be on your `PATH`:
   - [`jf`](https://jfrog.com/getting-started-with-jfrog-cli/) (JFrog CLI), `jq`, and `curl`.
   - A configured JFrog CLI server (e.g. via `jf login` / `jf config add`).
 
 ## Installation
 
-> This assumes the package is published to npm. Publishing is a maintainer action — see
-> [Open questions](#open-questions).
+The plugin is published to public npm as
+[`@jfrog/opencode-jfrog-plugin`](https://www.npmjs.com/package/@jfrog/opencode-jfrog-plugin) and is
+listed on the [OpenCode ecosystem page](https://opencode.ai/docs/ecosystem). OpenCode has no plugin
+marketplace — you install by referencing the npm package in your OpenCode config.
 
 Add the plugin to your OpenCode config (`opencode.json`):
 
 ```json
 {
-  "plugin": ["@jfrog/opencode-jfrog-plugin@<version>"]
+  "plugin": ["@jfrog/opencode-jfrog-plugin"]
 }
 ```
 
-Replace `<version>` with the latest published version. Omitting `@<version>` entirely tracks the latest
-release.
+OpenCode resolves the package from npm and loads it. To pin a specific version, use
+`"@jfrog/opencode-jfrog-plugin@<version>"`; omitting the version tracks the latest release.
 
 For an organization-wide rollout, set the plugin in OpenCode's
 [remote configuration](https://opencode.ai/docs/config/#remote) so every developer gets it
@@ -127,10 +132,7 @@ requests on the GitHub repository.
 
 See the [LICENSE](./LICENSE) file for details.
 
-## Open questions
+## Compatibility
 
-- **Minimum supported OpenCode version.** Only **1.17.7** has been verified (it honors
-  `config.skills.paths` in object form). The supported floor is still **TODO**.
-- **Publishing auth.** The package targets public npmjs, but the publish credentials (an `NPM_TOKEN`
-  secret or npm trusted publishing) are a maintainer action and not configured in this repo. The
-  installation instructions above assume the package has been published.
+Verified against OpenCode **1.17.7** and newer (the first version confirmed to honor
+`config.skills.paths` in object form). Older versions are not supported.
