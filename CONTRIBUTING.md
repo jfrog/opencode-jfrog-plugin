@@ -37,4 +37,4 @@ Thank you for your interest in contributing!
 ## Code Style
 
 This project uses ESLint and Prettier. Run `mise run lint:fix` to auto-fix issues.
-See the [Development](../README.md#development) section in the README for the available tasks.
+See the [Development](./README.md#development) section in the README for the available tasks.
