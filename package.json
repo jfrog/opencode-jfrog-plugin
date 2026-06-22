@@ -32,6 +32,7 @@
   "files": [
     "dist",
     "skills",
+    "templates",
     "sync-skills-vendor.json"
   ],
   "main": "dist/index.js",

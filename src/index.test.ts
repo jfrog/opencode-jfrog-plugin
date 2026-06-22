@@ -40,10 +40,12 @@ function skillsOf(config: Config): { paths?: string[] } | undefined {
   return (config as { skills?: { paths?: string[] } }).skills;
 }
 
-type McpEntry = { type?: string; url?: string; enabled?: boolean };
+function instructionsOf(config: Config): string[] {
+  return (config as { instructions?: string[] }).instructions ?? [];
+}
 
-function mcpOf(config: Config): Record<string, McpEntry> | undefined {
-  return (config as { mcp?: Record<string, McpEntry> }).mcp;
+function hasMcpTemplate(config: Config): boolean {
+  return instructionsOf(config).some((p) => p.endsWith('templates/jfrog-mcp-management.md'));
 }
 
 describe('jfrog opencode plugin exports', () => {
@@ -186,70 +188,143 @@ describe('vendored skills content sanity (V9)', () => {
   }
 });
 
-// JFrog Platform remote MCP injection via the config hook.
-describe('JfrogOpencodePlugin MCP injection', () => {
+// Agent Guard (Claude model): gated injection of the MCP-management instructions template.
+describe('JfrogOpencodePlugin Agent Guard injection (gated)', () => {
+  const ENV_KEYS = [
+    'HOME',
+    'JFROG_URL',
+    'JF_URL',
+    'JFROG_ACCESS_TOKEN',
+    'JF_ACCESS_TOKEN',
+    '_JF_AGENT_GUARD_FORCE_DISABLE',
+    'JF_AGENT_GUARD_FORCE_ENABLE',
+  ];
   let homeDir: string;
-  let prevHome: string | undefined;
-  let prevUrl: string | undefined;
-  let prevPlatformUrl: string | undefined;
+  let savedEnv: Record<string, string | undefined>;
+  let originalFetch: typeof fetch;
 
   beforeEach(() => {
-    prevHome = process.env.HOME;
-    prevUrl = process.env.JFROG_URL;
-    prevPlatformUrl = process.env.JFROG_PLATFORM_URL;
+    savedEnv = {};
+    for (const key of ENV_KEYS) {
+      savedEnv[key] = process.env[key];
+      delete process.env[key];
+    }
     homeDir = mkdtempSync(join(tmpdir(), 'jfrog-plugin-home-'));
     process.env.HOME = homeDir;
-    delete process.env.JFROG_URL;
-    delete process.env.JFROG_PLATFORM_URL;
+    originalFetch = globalThis.fetch;
   });
 
   afterEach(() => {
-    const restore = (key: string, value: string | undefined): void => {
+    globalThis.fetch = originalFetch;
+    for (const key of ENV_KEYS) {
+      const value = savedEnv[key];
       if (value === undefined) {
         delete process.env[key];
       } else {
         process.env[key] = value;
       }
-    };
-    restore('HOME', prevHome);
-    restore('JFROG_URL', prevUrl);
-    restore('JFROG_PLATFORM_URL', prevPlatformUrl);
+    }
     rmSync(homeDir, { recursive: true, force: true });
   });
 
-  it('registers the JFrog remote MCP from JFROG_URL (normalizing scheme/trailing slash)', async () => {
-    process.env.JFROG_URL = 'https://example.jfrog.io/';
-    const hooks = await server(pluginInput());
-    const config = {} as Config;
-    await hooks.config?.(config);
-    expect(mcpOf(config)?.jfrog).toEqual({
-      type: 'remote',
-      url: 'https://example.jfrog.io/mcp',
-      enabled: true,
+  function setFetch(impl: (url: string) => Promise<Response>): ReturnType<typeof mock> {
+    const fetchMock = mock((input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      return impl(url);
     });
-  });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  }
 
-  it('falls back to JFROG_PLATFORM_URL when JFROG_URL is unset', async () => {
-    process.env.JFROG_PLATFORM_URL = 'example.jfrog.io';
+  function settingResponse(value: boolean): Response {
+    return new Response(JSON.stringify({ settings: { mcpGatewayPluginEnabled: { value } } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  async function runConfig(): Promise<Config> {
     const hooks = await server(pluginInput());
     const config = {} as Config;
     await hooks.config?.(config);
-    expect(mcpOf(config)?.jfrog?.url).toBe('https://example.jfrog.io/mcp');
-  });
+    return config;
+  }
 
-  it('does not register a JFrog MCP when no platform URL env is set', async () => {
-    const hooks = await server(pluginInput());
-    const config = {} as Config;
-    await hooks.config?.(config);
-    expect(mcpOf(config)?.jfrog).toBeUndefined();
-  });
-
-  it('does not overwrite a user-defined jfrog MCP entry', async () => {
+  it('injects the template when the account setting is enabled', async () => {
     process.env.JFROG_URL = 'https://example.jfrog.io';
+    process.env.JFROG_ACCESS_TOKEN = 'tok';
+    setFetch(() => Promise.resolve(settingResponse(true)));
+    expect(hasMcpTemplate(await runConfig())).toBe(true);
+  });
+
+  it('honors legacy JF_URL/JF_ACCESS_TOKEN names', async () => {
+    process.env.JF_URL = 'https://example.jfrog.io';
+    process.env.JF_ACCESS_TOKEN = 'tok';
+    setFetch(() => Promise.resolve(settingResponse(true)));
+    expect(hasMcpTemplate(await runConfig())).toBe(true);
+  });
+
+  it('does not inject when the account setting is disabled', async () => {
+    process.env.JFROG_URL = 'https://example.jfrog.io';
+    process.env.JFROG_ACCESS_TOKEN = 'tok';
+    setFetch(() => Promise.resolve(settingResponse(false)));
+    expect(hasMcpTemplate(await runConfig())).toBe(false);
+  });
+
+  it('fails closed on a non-ok response', async () => {
+    process.env.JFROG_URL = 'https://example.jfrog.io';
+    process.env.JFROG_ACCESS_TOKEN = 'tok';
+    setFetch(() => Promise.resolve(new Response('nope', { status: 500 })));
+    expect(hasMcpTemplate(await runConfig())).toBe(false);
+  });
+
+  it('does not call the settings API or inject when the token is missing', async () => {
+    process.env.JFROG_URL = 'https://example.jfrog.io';
+    const fetchMock = setFetch(() => Promise.resolve(settingResponse(true)));
+    expect(hasMcpTemplate(await runConfig())).toBe(false);
+    expect(fetchMock.mock.calls.length).toBe(0);
+  });
+
+  it('fails closed (and does not throw) when the request errors/aborts', async () => {
+    process.env.JFROG_URL = 'https://example.jfrog.io';
+    process.env.JFROG_ACCESS_TOKEN = 'tok';
+    setFetch(() => Promise.reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+    expect(hasMcpTemplate(await runConfig())).toBe(false);
+  });
+
+  it('honors _JF_AGENT_GUARD_FORCE_DISABLE (no API call, no injection)', async () => {
+    process.env.JFROG_URL = 'https://example.jfrog.io';
+    process.env.JFROG_ACCESS_TOKEN = 'tok';
+    process.env._JF_AGENT_GUARD_FORCE_DISABLE = 'true';
+    const fetchMock = setFetch(() => Promise.resolve(settingResponse(true)));
+    expect(hasMcpTemplate(await runConfig())).toBe(false);
+    expect(fetchMock.mock.calls.length).toBe(0);
+  });
+
+  it('honors JF_AGENT_GUARD_FORCE_ENABLE (injects without the API check)', async () => {
+    process.env.JF_AGENT_GUARD_FORCE_ENABLE = 'true';
+    const fetchMock = setFetch(() => Promise.resolve(settingResponse(false)));
+    expect(hasMcpTemplate(await runConfig())).toBe(true);
+    expect(fetchMock.mock.calls.length).toBe(0);
+  });
+
+  it('does not duplicate the template path on repeated config calls', async () => {
+    process.env.JF_AGENT_GUARD_FORCE_ENABLE = 'true';
+    setFetch(() => Promise.resolve(settingResponse(true)));
     const hooks = await server(pluginInput());
-    const existing: McpEntry = { type: 'remote', url: 'https://user.example/mcp', enabled: false };
-    const config = { mcp: { jfrog: existing } } as unknown as Config;
+    const config = {} as Config;
     await hooks.config?.(config);
-    expect(mcpOf(config)?.jfrog).toEqual(existing);
+    await hooks.config?.(config);
+    const count = instructionsOf(config).filter((p) =>
+      p.endsWith('templates/jfrog-mcp-management.md')
+    ).length;
+    expect(count).toBe(1);
+  });
+
+  it('does not inject any config.mcp entry', async () => {
+    process.env.JF_AGENT_GUARD_FORCE_ENABLE = 'true';
+    setFetch(() => Promise.resolve(settingResponse(true)));
+    const config = await runConfig();
+    expect((config as { mcp?: unknown }).mcp).toBeUndefined();
   });
 });
