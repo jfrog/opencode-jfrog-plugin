@@ -1,16 +1,6 @@
 // (c) JFrog Ltd. (2026)
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { describe, it, expect, mock } from 'bun:test';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Config, PluginInput } from '@opencode-ai/plugin';
@@ -47,25 +37,6 @@ describe('jfrog opencode plugin exports', () => {
 });
 
 describe('JfrogOpencodePlugin config hook', () => {
-  // Migration runs at load and reads HOME; isolate it from the real home dir.
-  let homeDir: string;
-  let prevHome: string | undefined;
-
-  beforeEach(() => {
-    prevHome = process.env.HOME;
-    homeDir = mkdtempSync(join(tmpdir(), 'jfrog-plugin-home-'));
-    process.env.HOME = homeDir;
-  });
-
-  afterEach(() => {
-    if (prevHome === undefined) {
-      delete process.env.HOME;
-    } else {
-      process.env.HOME = prevHome;
-    }
-    rmSync(homeDir, { recursive: true, force: true });
-  });
-
   it('returns only a config hook (no event hook)', async () => {
     const hooks = await server(pluginInput());
     expect(hooks.config).toBeDefined();
@@ -89,59 +60,6 @@ describe('JfrogOpencodePlugin config hook', () => {
     await hooks.config?.(config);
     const bundled = (skillsOf(config)?.paths ?? []).filter((p) => p.endsWith('/skills'));
     expect(bundled.length).toBe(1);
-  });
-});
-
-// V5 — migration safety: the one-time cleanup runs at load and must be conservative.
-describe('JfrogOpencodePlugin migration safety (V5)', () => {
-  let homeDir: string;
-  let prevHome: string | undefined;
-  let skillsRoot: string;
-
-  beforeEach(() => {
-    prevHome = process.env.HOME;
-    homeDir = mkdtempSync(join(tmpdir(), 'jfrog-plugin-home-'));
-    process.env.HOME = homeDir;
-    skillsRoot = join(homeDir, '.config', 'opencode', 'skills');
-  });
-
-  afterEach(() => {
-    if (prevHome === undefined) {
-      delete process.env.HOME;
-    } else {
-      process.env.HOME = prevHome;
-    }
-    rmSync(homeDir, { recursive: true, force: true });
-  });
-
-  function seedSkill(relPath: string): void {
-    const full = join(skillsRoot, relPath);
-    mkdirSync(dirname(full), { recursive: true });
-    writeFileSync(full, '# fixture skill\n');
-  }
-
-  it('removes only version-nested managed skills; keeps flat, unrelated, and unknown-shape dirs', async () => {
-    // Managed + version-nested -> should be REMOVED.
-    seedSkill(join('jfrog-cli', '0.0.1', 'SKILL.md'));
-    // Managed name but FLAT (could be the user's own) -> KEPT.
-    seedSkill(join('jfrog-curation', 'SKILL.md'));
-    // Unrelated user skill -> KEPT.
-    seedSkill(join('my-own-skill', 'SKILL.md'));
-    // Managed name, unknown shape (no SKILL.md anywhere) -> KEPT.
-    mkdirSync(join(skillsRoot, 'opencode-jfrog-mcp'), { recursive: true });
-
-    await server(pluginInput());
-
-    expect(existsSync(join(skillsRoot, 'jfrog-cli'))).toBe(false);
-    expect(existsSync(join(skillsRoot, 'jfrog-curation', 'SKILL.md'))).toBe(true);
-    expect(existsSync(join(skillsRoot, 'my-own-skill', 'SKILL.md'))).toBe(true);
-    expect(existsSync(join(skillsRoot, 'opencode-jfrog-mcp'))).toBe(true);
-  });
-
-  it('does not throw when the skills root does not exist', async () => {
-    expect(existsSync(skillsRoot)).toBe(false);
-    const hooks = await server(pluginInput());
-    expect(hooks.config).toBeDefined();
   });
 });
 

@@ -64,9 +64,6 @@ OpenCode then discovers the skills the same way it discovers any skill — they 
 tool and `/skills`, and the agent invokes them when relevant. There is no runtime download, unzip, or
 network call on load.
 
-The plugin also runs a conservative, one-time [migration](#upgrading-from-003) to clean up skills that
-older versions installed under `~/.config/opencode/skills`.
-
 ## Updating the bundled skills
 
 The skills are vendored at a pinned version. Updating them is a build-time step and **requires a new
@@ -98,9 +95,10 @@ This release changes behavior in ways that are **not** backward compatible:
   session start. That is gone; the plugin now emits an interim one-line nudge to run
   `jf setup <pm>` yourself. Durable package-manager setup is being recovered upstream in
   `jfrog/jfrog-skills`.
-- **Old skills are auto-cleaned.** A one-time migration removes only the old, version-nested managed
-  skill directories (e.g. `~/.config/opencode/skills/jfrog-cli/<version>/SKILL.md`). Flat skills you
-  authored yourself and unrelated skills are never touched.
+- **Old skills are not auto-cleaned.** The plugin no longer touches `~/.config/opencode/skills`. If you
+  used a version < 0.0.3, remove the old managed skill directories yourself (e.g. `skill-install`,
+  `skill-publish`, `jfrog-cli`, `opencode-jfrog-mcp`, `jfrog-setup-package-managers`, `jfrog-curation`,
+  `jfrog-packages`) under `~/.config/opencode/skills`.
 - **No more runtime artifacts.** The plugin no longer injects an instructions file
   (`.jfrog/instructions/...`) or writes `.jfrog/local/package-managers.json`, and it no longer
   downloads skills at runtime.
