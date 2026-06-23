@@ -61,6 +61,20 @@ describe('JfrogOpencodePlugin config hook', () => {
     const bundled = (skillsOf(config)?.paths ?? []).filter((p) => p.endsWith('/skills'));
     expect(bundled.length).toBe(1);
   });
+
+  it('shows the `jf setup` nudge only once across multiple config calls', async () => {
+    const client = createClient();
+    const hooks = await server(pluginInput(client));
+    const config = {} as Config;
+    await hooks.config?.(config);
+    await hooks.config?.(config);
+    const showToast = client.tui.showToast as unknown as ReturnType<typeof mock>;
+    const nudges = showToast.mock.calls.filter((args) => {
+      const message = (args[0] as { body?: { message?: string } })?.body?.message ?? '';
+      return message.includes('jf setup');
+    });
+    expect(nudges.length).toBe(1);
+  });
 });
 
 // V9 — vendored-content sanity: the committed skills/ tree must stay flat and well-formed.

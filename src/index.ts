@@ -43,6 +43,9 @@ const jfrogOpencodePlugin: Plugin = async ({ client }) => {
   };
   log('JfrogOpencodePlugin starting...');
 
+  // The config hook can run multiple times per session; nudge the user only once.
+  let nudgeShown = false;
+
   return {
     config: async (config) => {
       const cfg = config as ConfigWithSkills;
@@ -65,10 +68,13 @@ const jfrogOpencodePlugin: Plugin = async ({ client }) => {
       log('config.skills.paths=' + JSON.stringify(cfg.skills.paths));
 
       // R2 interim nudge until package-manager setup is handled by a skill.
-      toast(
-        'JFrog: run `jf setup <pm>` to configure package managers against Artifactory.',
-        'info'
-      );
+      if (!nudgeShown) {
+        nudgeShown = true;
+        toast(
+          'JFrog: run `jf setup <pm>` to configure package managers against Artifactory.',
+          'info'
+        );
+      }
     },
   };
 };

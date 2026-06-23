@@ -24,7 +24,10 @@ async function extractTarball(tarballPath, intoDir) {
   await fs.mkdir(intoDir, { recursive: true });
   const result = spawnSync("tar", ["-xzf", tarballPath, "-C", intoDir], { stdio: "inherit" });
   if (result.status !== 0) throw new Error(`tar exited with status ${result.status}`);
-  const [topLevel] = await fs.readdir(intoDir);
+  // readdir order is filesystem-dependent; select the single top-level dir deterministically.
+  const entries = await fs.readdir(intoDir, { withFileTypes: true });
+  const [topLevel] = entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+  if (!topLevel) throw new Error("no top-level directory found in extracted tarball");
   return path.join(intoDir, topLevel);
 }
 
