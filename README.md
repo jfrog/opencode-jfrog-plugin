@@ -1,82 +1,136 @@
 # opencode-jfrog-plugin
 
-JFrog Plugin for seamless integration to Opencode
-This plugin is intended for use by JFrog Customers also using Opencode.
+JFrog integration for [OpenCode](https://opencode.ai/). The plugin ships the official JFrog
+[Agent Skills](https://opencode.ai/docs/skills/) with the package and registers them with OpenCode at
+load time, so JFrog capabilities are available to the agent out of the box.
+
+## What's included
+
+The plugin bundles two canonical skills, vendored (pinned) from
+[`jfrog/jfrog-skills`](https://github.com/jfrog/jfrog-skills) and committed under `skills/`:
+
+- **`jfrog`** — interact with the JFrog Platform via the JFrog CLI, MCP server, and REST/GraphQL APIs
+  (Artifactory, Xray, builds, permissions, projects, release lifecycle, advanced security, and more).
+- **`jfrog-package-safety-and-download`** — check package safety/curation status and download packages
+  through JFrog.
+
+The skills ship **with the plugin** (vendored and pinned). They are **not** downloaded at runtime, so
+the plugin works offline and the skill set is reproducible for a given plugin version.
+
+The plugin is **self-contained**: everything it needs is in the published npm tarball (`dist/` + the
+vendored `skills/`). There are no runtime downloads and no dependency on `releases.jfrog.io` or any other
+external artifact host.
 
 ## Prerequisites
-### General:
-- [JFrog Platform](https://jfrog.com) installed
-- [Opencode](https://opencode.ai/) installed
 
-### MCP Registry:
-- Access to the corporate JFrog Platform with the AI Catalog enabled.
-- A project with at least one allowed MCP server.
-
-### Curation:
-- JFrog Enterprise+ or a Unified Security Bundle
-- Xray deployment
-- Curation configuration on the used remote repositories
-
-
-> This is a Bun module created from the [bun-module](https://github.com/zenobi-us/bun-module) template
+- A [JFrog Platform](https://jfrog.com) instance you can authenticate against.
+- [OpenCode](https://opencode.ai/) installed (verified against OpenCode **1.17.7** and newer, which
+  honors `config.skills.paths` in object form).
+- For running the skills at runtime, the following must be on your `PATH`:
+  - [`jf`](https://jfrog.com/getting-started-with-jfrog-cli/) (JFrog CLI), `jq`, and `curl`.
+  - A configured JFrog CLI server (e.g. via `jf login` / `jf config add`).
 
 ## Installation
-Add the opencode-jfrog-plugin into your opencode config.
-Preferably set the plugin globally for all their developers using the Opencode remote configuration, visit [opencode remote configuration](https://opencode.ai/docs/config/#remote) for more details.
 
-The plugin configuration looks like this:
+The plugin is published to public npm as
+[`@jfrog/opencode-jfrog-plugin`](https://www.npmjs.com/package/@jfrog/opencode-jfrog-plugin) and is
+listed on the [OpenCode ecosystem page](https://opencode.ai/docs/ecosystem). OpenCode has no plugin
+marketplace — you install by referencing the npm package in your OpenCode config.
+
+Add the plugin to your OpenCode config (`opencode.json`):
+
+```json
+{
+  "plugin": ["@jfrog/opencode-jfrog-plugin"]
+}
 ```
-"plugin": [
-   "@jfrog/opencode-jfrog-plugin@0.0.3"
- ],
-```
 
-## How this works
-Once opencode starts it runs the plugin. The plugin then:
-1. Pulls a few base skills that allow the integration from the developer opencode instance into JFrog (can be found under `~/.config/opencode/skills`)
-2. Pulls integration instructions adding LLM hints on how to integrate with JFrog (can be found under `<project-root>/.jfrog/instructions`)
-3. Appends integration instructions into the runtime opencode config
+OpenCode resolves the package from npm and loads it. To pin a specific version, use
+`"@jfrog/opencode-jfrog-plugin@<version>"`; omitting the version tracks the latest release.
 
-Once the skills and instructions are set, every relevant task (package management, skills and MCP handling) is integrated into JFrog.
-Once the user tries to resolve dependencies, handle packages, install MCP servers, and pull a skill, the system will verify integration prerequisites (JFrog CLI is installed and configured and `<project-root>/.jfrog/local/package-managers.json` is available) and will perform the task using JFrog capabilities.
+For an organization-wide rollout, set the plugin in OpenCode's
+[remote configuration](https://opencode.ai/docs/config/#remote) so every developer gets it
+automatically.
 
-While the skills run, they make sure that JFrog CLI is installed and configured, and that package managers are configured against the JFrog platform.
+## How it works
 
-## Usage
-Developers who get the plugin through their corporate opencode configuration, or add it manually into their device configuration will automatically get the JFrog integration up and are expected to be asked for completion of package management setup when needed.
+The plugin is intentionally **thin**. On load it:
 
-This can be handled manually or when a task requires it.
-### Manually
-Within opencode, type `/skills` and select the `jfrog-setup-package-managers` skill to complete package management and project setup.
-### Automatically
-Within opencode, when tasks require a JFrog skill, the triggered skill will guide the user through the needed setup.
+1. Resolves its bundled `skills/` directory (shipped inside the package).
+2. Registers that directory with OpenCode through the `config` hook by adding it to
+   `config.skills.paths`.
 
-### Integration setup artifacts
-LLM instructions are automatically created at `<project-root>/.jfrog/instructions`
-Package management mappings are created at `<project-root>/.jfrog/local/package-managers.json`
-Skills are created under `~/.config/opencode/skills`
+OpenCode then discovers the skills the same way it discovers any skill — they appear via the `skill`
+tool and `/skills`, and the agent invokes them when relevant. There is no runtime download, unzip, or
+network call on load.
+
+## Updating the bundled skills
+
+The skills are vendored at a pinned version. Updating them is a build-time step and **requires a new
+plugin release** (there are no runtime skill updates). See [VENDOR.md](./VENDOR.md) for the pin-bump
+workflow (`mise run sync-skills`).
 
 ## Troubleshooting
-The JFrog plugin pulls a minimal set of JFrog integration skills and LLM instructions that allow for the integration. It also adds the instructions file into the opencode project configuration file.
-The plugin does not log by default, but allows debug logs for troubleshooting the JFrog setup process.
-To enable opencode-jfrog-plugin debug logging, run `export JFROG_DEBUG_LOGS=true` before running opencode.
+
+The plugin does not log by default. To enable debug logging:
+
+```bash
+export JFROG_DEBUG_LOGS=true
+```
+
+Logs are written to `<project-root>/.opencode/event-log.txt`.
+
+If you see a **"bundled skills not found"** error (a toast in the TUI and/or an `ERROR` line in the log),
+the installed package is incomplete or corrupted — reinstall `@jfrog/opencode-jfrog-plugin`.
+
+## Upgrading from < 0.0.3
+
+This release changes behavior in ways that are **not** backward compatible:
+
+- **Skill catalog changed (7 → 2).** The previous Artifactory skills — `skill-install`,
+  `skill-publish`, `jfrog-cli`, `opencode-jfrog-mcp`, `jfrog-setup-package-managers`, `jfrog-curation`,
+  `jfrog-packages` — are replaced by the two canonical skills above. Invocations of the removed skill
+  names no longer exist; that functionality now folds into the `jfrog` skill.
+- **Package-manager auto-setup was removed.** Earlier versions ran `jf setup <pm>` automatically on
+  session start. That is gone; the plugin now emits an interim one-line nudge to run
+  `jf setup <pm>` yourself. Durable package-manager setup is being recovered upstream in
+  `jfrog/jfrog-skills`.
+- **Old skills are not auto-cleaned.** The plugin no longer touches `~/.config/opencode/skills`. If you
+  used a version < 0.0.3, remove the old managed skill directories yourself (e.g. `skill-install`,
+  `skill-publish`, `jfrog-cli`, `opencode-jfrog-mcp`, `jfrog-setup-package-managers`, `jfrog-curation`,
+  `jfrog-packages`) under `~/.config/opencode/skills`.
+- **No more runtime artifacts.** The plugin no longer injects an instructions file
+  (`.jfrog/instructions/...`) or writes `.jfrog/local/package-managers.json`, and it no longer
+  downloads skills at runtime.
+- **Dependencies resolve from public npm.** Internal registry references were removed; the build and CI
+  now resolve from public npm.
 
 ## Development
 
-- `mise run build` - Build the module
-- `mise run test` - Run tests
-- `mise run lint` - Lint code
-- `mise run lint:fix` - Fix linting issues
-- `mise run format` - Format code with Prettier
+Tasks are run with [mise](https://mise.jdx.dev/):
+
+- `mise run build` — build the module
+- `mise run test` — run tests (`bun test`)
+- `mise run typecheck` — type-check with `tsc --noEmit`
+- `mise run lint` — lint with ESLint
+- `mise run lint:fix` — auto-fix lint issues
+- `mise run format` — format with Prettier
+- `mise run sync-skills` — re-vendor the bundled skills (see [VENDOR.md](./VENDOR.md))
 
 ## Release
 
-See the [RELEASE.md](RELEASE.md) file for instructions on how to release a new version of the module.
+See [RELEASE.md](./RELEASE.md) for how to release a new version.
 
 ## Contributing
 
-Contributions are welcome! Please file issues or submit pull requests on the GitHub repository.
+Contributions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md). Please file issues or open pull
+requests on the GitHub repository.
 
 ## License
 
-See the [LICENSE](LICENSE) file for details.
+See the [LICENSE](./LICENSE) file for details.
+
+## Compatibility
+
+Verified against OpenCode **1.17.7** and newer (the first version confirmed to honor
+`config.skills.paths` in object form). Older versions are not supported.

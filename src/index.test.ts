@@ -1,48 +1,33 @@
 // (c) JFrog Ltd. (2026)
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
-import { mkdirSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { describe, it, expect, mock } from 'bun:test';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { Config, PluginInput } from '@opencode-ai/plugin';
 import { server, JfrogOpencodePlugin } from './index.ts';
 
-function tpl(strings: TemplateStringsArray, values: unknown[]): string {
-  let out = '';
-  for (let i = 0; i < strings.length; i++) {
-    out += strings[i];
-    if (i < values.length) {
-      out += String(values[i]);
-    }
-  }
-  return out;
+function createClient(): PluginInput['client'] {
+  return {
+    tui: {
+      showToast: mock(() => Promise.resolve()),
+    },
+  } as unknown as PluginInput['client'];
 }
 
-/** Minimal stand-in for BunShell used by the plugin (only `.nothrow().quiet()` chains). */
-function createShellMock(options: { jfVersionExitCode?: number } = {}) {
-  const jfVersionExitCode = options.jfVersionExitCode ?? 0;
-  return function $(strings: TemplateStringsArray, ...values: unknown[]) {
-    const cmd = tpl(strings, values);
-    let exitCode = 0;
-    let stderr = '';
-    if (cmd.includes('jf --version')) {
-      exitCode = jfVersionExitCode;
-      if (jfVersionExitCode !== 0) {
-        stderr = 'jf: command not found';
-      }
-    } else if (cmd.includes('test -d') && cmd.includes('.opencode/skills')) {
-      exitCode = 1;
-    }
-    const result = { exitCode, stderr };
-    return {
-      nothrow() {
-        return {
-          quiet() {
-            return Promise.resolve(result);
-          },
-        };
-      },
-    };
-  } as unknown as PluginInput['$'];
+function pluginInput(client?: PluginInput['client']): PluginInput {
+  return {
+    client: client ?? createClient(),
+    $: (() => {}) as unknown as PluginInput['$'],
+    directory: process.cwd(),
+    project: {} as PluginInput['project'],
+    worktree: process.cwd(),
+    experimental_workspace: { register: () => {} },
+    serverUrl: new URL('http://127.0.0.1:4096'),
+  } as unknown as PluginInput;
+}
+
+function skillsOf(config: Config): { paths?: string[] } | undefined {
+  return (config as { skills?: { paths?: string[] } }).skills;
 }
 
 describe('jfrog opencode plugin exports', () => {
@@ -51,118 +36,78 @@ describe('jfrog opencode plugin exports', () => {
   });
 });
 
-describe('JfrogOpencodePlugin', () => {
-  let projectRoot: string;
-  let homeDir: string;
-  let prevCwd: string;
-  let prevHome: string | undefined;
-  let originalFetch: typeof fetch;
-  let fetchMock: ReturnType<typeof mock>;
-
-  beforeEach(() => {
-    originalFetch = globalThis.fetch;
-    prevCwd = process.cwd();
-    prevHome = process.env.HOME;
-    projectRoot = mkdtempSync(join(tmpdir(), 'jfrog-plugin-proj-'));
-    homeDir = mkdtempSync(join(tmpdir(), 'jfrog-plugin-home-'));
-    process.chdir(projectRoot);
-    process.env.HOME = homeDir;
-    mkdirSync(join(projectRoot, '.jfrog', 'instructions'), { recursive: true });
-    writeFileSync(
-      join(projectRoot, '.jfrog', 'instructions', 'JFROG-INTEGRATION-MANAGEMENT.md'),
-      '# test instructions\n'
-    );
-    mkdirSync(join(homeDir, '.config', 'opencode', 'skills'), { recursive: true });
-    fetchMock = mock((input: string | Request) => {
-      const url = typeof input === 'string' ? input : input.url;
-      if (url.endsWith('.zip') || url.includes('.zip')) {
-        return Promise.resolve(new Response(null, { status: 404 }));
-      }
-      return Promise.resolve(Response.json({ skills: [] }));
-    });
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-    process.chdir(prevCwd);
-    if (prevHome === undefined) {
-      delete process.env.HOME;
-    } else {
-      process.env.HOME = prevHome;
-    }
-    rmSync(projectRoot, { recursive: true, force: true });
-    rmSync(homeDir, { recursive: true, force: true });
-  });
-
-  function createClient() {
-    return {
-      tui: {
-        showToast: mock(() => Promise.resolve()),
-      },
-    } as unknown as PluginInput['client'];
-  }
-
-  function pluginInput($: PluginInput['$'], client?: PluginInput['client']): PluginInput {
-    return {
-      client: client ?? createClient(),
-      $,
-      directory: projectRoot,
-      project: {} as PluginInput['project'],
-      worktree: projectRoot,
-      experimental_workspace: { register: () => {} },
-      serverUrl: new URL('http://127.0.0.1:4096'),
-    };
-  }
-
-  it('loads with pullSkills using stubbed fetch and returns hooks', async () => {
-    const hooks = await server(pluginInput(createShellMock()));
+describe('JfrogOpencodePlugin config hook', () => {
+  it('returns only a config hook (no event hook)', async () => {
+    const hooks = await server(pluginInput());
     expect(hooks.config).toBeDefined();
-    expect(hooks.event).toBeDefined();
-    expect(fetchMock.mock.calls.length).toBeGreaterThan(0);
+    expect((hooks as { event?: unknown }).event).toBeUndefined();
   });
 
-  it('config adds JFrog integration instructions when missing', async () => {
-    const hooks = await server(pluginInput(createShellMock()));
-    const config = { instructions: [] as string[] };
-    await hooks.config?.(config as Config);
-    expect(config.instructions).toContain('.jfrog/instructions/JFROG-INTEGRATION-MANAGEMENT.md');
+  it('adds the bundled skills dir to config.skills.paths (object form)', async () => {
+    const hooks = await server(pluginInput());
+    const config = {} as Config;
+    await hooks.config?.(config);
+    const skills = skillsOf(config);
+    expect(skills).toBeDefined();
+    expect(Array.isArray(skills?.paths)).toBe(true);
+    expect(skills?.paths?.some((p) => p.endsWith('/skills'))).toBe(true);
   });
 
-  it('config does not duplicate the JFrog instructions path', async () => {
-    const hooks = await server(pluginInput(createShellMock()));
-    const path = '.jfrog/instructions/JFROG-INTEGRATION-MANAGEMENT.md';
-    const config = { instructions: [path] };
-    await hooks.config?.(config as Config);
-    expect(config.instructions.filter((p) => p === path).length).toBe(1);
+  it('does not duplicate the bundled skills path (idempotent)', async () => {
+    const hooks = await server(pluginInput());
+    const config = {} as Config;
+    await hooks.config?.(config);
+    await hooks.config?.(config);
+    const bundled = (skillsOf(config)?.paths ?? []).filter((p) => p.endsWith('/skills'));
+    expect(bundled.length).toBe(1);
   });
 
-  it('session.created shows error toast when jf CLI is missing', async () => {
+  it('shows the `jf setup` nudge only once across multiple config calls', async () => {
     const client = createClient();
-    const hooks = await JfrogOpencodePlugin(
-      pluginInput(createShellMock({ jfVersionExitCode: 127 }), client)
-    );
-
-    await hooks.event?.({
-      event: {
-        type: 'session.created',
-        properties: {
-          info: {
-            id: 'sess-1',
-            projectID: 'proj-1',
-            directory: projectRoot,
-            title: 't',
-            version: '1',
-            time: { created: 0, updated: 0 },
-          },
-        },
-      } as never,
+    const hooks = await server(pluginInput(client));
+    const config = {} as Config;
+    await hooks.config?.(config);
+    await hooks.config?.(config);
+    const showToast = client.tui.showToast as unknown as ReturnType<typeof mock>;
+    const nudges = showToast.mock.calls.filter((args) => {
+      const message = (args[0] as { body?: { message?: string } })?.body?.message ?? '';
+      return message.includes('jf setup');
     });
-
-    expect(client.tui.showToast).toHaveBeenCalled();
-    const showToast = client.tui.showToast as ReturnType<typeof mock>;
-    const call = showToast.mock.calls[0]?.[0];
-    expect(call?.body?.variant).toBe('error');
-    expect(String(call?.body?.message)).toContain('Jfrog cli is not installed');
+    expect(nudges.length).toBe(1);
   });
+});
+
+// V9 — vendored-content sanity: the committed skills/ tree must stay flat and well-formed.
+describe('vendored skills content sanity (V9)', () => {
+  const skillsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills');
+  const EXPECTED_SKILLS = ['jfrog', 'jfrog-package-safety-and-download'];
+
+  function readFrontmatter(md: string): { name?: string; description?: string } {
+    const match = md.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!match) {
+      return {};
+    }
+    const block = match[1];
+    const name = block.match(/^name:\s*(.+)$/m)?.[1]?.trim();
+    const description = block.match(/^description:\s*(.+)$/m)?.[1]?.trim();
+    return { name, description };
+  }
+
+  it('contains exactly the two vendored skills (flat layout)', () => {
+    const dirs = readdirSync(skillsDir)
+      .filter((entry) => statSync(join(skillsDir, entry)).isDirectory())
+      .sort();
+    expect(dirs).toEqual(EXPECTED_SKILLS);
+  });
+
+  for (const skill of EXPECTED_SKILLS) {
+    it(`${skill}/SKILL.md has valid frontmatter with name == dir`, () => {
+      const skillMd = join(skillsDir, skill, 'SKILL.md');
+      expect(existsSync(skillMd)).toBe(true);
+      const { name, description } = readFrontmatter(readFileSync(skillMd, 'utf8'));
+      expect(name).toBeDefined();
+      expect(description).toBeDefined();
+      expect(name).toBe(skill);
+    });
+  }
 });

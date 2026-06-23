@@ -17,28 +17,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - name: Setup JFrog CLI
-        id: setup-cli
-        uses: jfrog/setup-jfrog-cli@v4.9.1
-        env: 
-          JF_URL: https://${{ vars.JF_URL }}/
-          JF_PROJECT: carmit
-        with:
-            oidc-provider-name: github-oidc
-
-      - name: setup jfrog npm repo
-        run: |
-          echo "Setting up jfrog npm repo"
-          # create bunfig.toml file with the following content:
-          echo "[install]" > bunfig.toml
-          echo "registry = { token = \"${{ steps.setup-cli.outputs.oidc-token }}\", url = \"https://ctoa.jfrog.io/artifactory/api/npm/carmit-carmit-npm-virtual/\" }" >> bunfig.toml
-          # add always-auth
-          echo "always-auth = true" >> bunfig.toml
-          cat bunfig.toml
-          
-          # configure jfrog npm repo
-          jf npm-config --repo-resolve=carmit-carmit-npm-virtual  --global
-
 
       - uses: jdx/mise-action@d6e32c1796099e0f1f3ac741c220a8b7eae9e5dd
         with:
