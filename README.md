@@ -64,6 +64,32 @@ OpenCode then discovers the skills the same way it discovers any skill — they 
 tool and `/skills`, and the agent invokes them when relevant. There is no runtime download, unzip, or
 network call on load.
 
+## JFrog Platform MCP
+
+When the environment is configured, the plugin also registers the **JFrog Platform remote MCP server**
+(`https://<JFROG_URL>/mcp`) into `config.mcp.jfrog`, so the JFrog platform tools appear in OpenCode
+alongside the skills.
+
+**Prerequisites — both must be set:**
+
+- `JFROG_URL` — your JFrog platform URL (e.g. `https://mycompany.jfrog.io`). The legacy `JF_URL` and the
+  `JFROG_PLATFORM_URL` (Cursor-compat) names are also accepted.
+- `JFROG_ACCESS_TOKEN` — a **JWT access token** created with `jf access-token-create` (or the legacy
+  `JF_ACCESS_TOKEN`). This **must be a JWT access token, not a 64-character reference token** — reference
+  tokens are rejected by the `/mcp` endpoint.
+
+The MCP is authenticated with the token directly (`Authorization: Bearer …`, `oauth: false`), so it works
+headlessly with no interactive browser sign-in. Registration is a pure config mutation — there is no
+network call on plugin load.
+
+**Opt-out:** set `JFROG_MCP_DISABLE=true` to skip MCP registration entirely. You can also scope the
+exposed tools via OpenCode's `tools` globbing. If you define your own `mcp.jfrog` server in your config,
+the plugin leaves it untouched.
+
+**Security:** the token is referenced indirectly via OpenCode's `{env:JFROG_ACCESS_TOKEN}` substitution —
+the raw token value is never written into the config object, so it stays out of logs and serialized
+state and survives rotation.
+
 ## Updating the bundled skills
 
 The skills are vendored at a pinned version. Updating them is a build-time step and **requires a new
