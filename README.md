@@ -86,6 +86,13 @@ network call on plugin load.
 exposed tools via OpenCode's `tools` globbing. If you define your own `mcp.jfrog` server in your config,
 the plugin leaves it untouched.
 
+**Context cost:** the JFrog MCP exposes ~56 tools whose schemas are loaded into the model context on
+every request (OpenCode has no lazy tool loading), measured at roughly **+32K tokens per request** in
+OpenCode (~44K in Cursor). The MCP is enabled by default for parity with the JFrog Cursor/Claude plugins;
+if that overhead matters for your workflow, disable it with `JFROG_MCP_DISABLE=true` or narrow the
+surface with `tools` globbing. The bundled **skills** do not carry this cost — only their short
+descriptions stay in context, and a skill's body loads only when it is invoked.
+
 **Security:** the token is referenced indirectly via OpenCode's `{env:JFROG_ACCESS_TOKEN}` substitution —
 the raw token value is never written into the config object, so it stays out of logs and serialized
 state and survives rotation.
