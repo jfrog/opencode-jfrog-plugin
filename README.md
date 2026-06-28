@@ -93,9 +93,11 @@ if that overhead matters for your workflow, disable it with `JFROG_MCP_DISABLE=t
 surface with `tools` globbing. The bundled **skills** do not carry this cost — only their short
 descriptions stay in context, and a skill's body loads only when it is invoked.
 
-**Security:** the token is referenced indirectly via OpenCode's `{env:JFROG_ACCESS_TOKEN}` substitution —
-the raw token value is never written into the config object, so it stays out of logs and serialized
-state and survives rotation.
+**Token handling:** OpenCode does not expand `{env:…}` placeholders in config that a plugin injects at
+runtime, so the plugin reads `JFROG_ACCESS_TOKEN` from the environment and sets the resolved
+`Authorization: Bearer <token>` header directly. The token therefore lives in the in-memory session
+config (sourced from your environment); the plugin itself never writes it to disk. Prefer a short-lived
+token (`jf atc --expiry=…`).
 
 ## Updating the bundled skills
 
@@ -115,6 +117,12 @@ Logs are written to `<project-root>/.opencode/event-log.txt`.
 
 If you see a **"bundled skills not found"** error (a toast in the TUI and/or an `ERROR` line in the log),
 the installed package is incomplete or corrupted — reinstall `@jfrog/opencode-jfrog-plugin`.
+
+If the JFrog MCP shows **`401` / an SSE error** in `opencode mcp list` (or the TUI), the `/mcp` endpoint
+rejected the token. Make sure `JFROG_ACCESS_TOKEN` is a **JWT** access token (`jf atc`), not a 64-char
+reference token, and that it was issued for the same platform as `JFROG_URL` (check `jf c show`). MCP
+connection status is surfaced by OpenCode itself — this plugin only registers the server. With
+`JFROG_DEBUG_LOGS=true`, a non-JWT token also produces a `WARNING` line in the event log.
 
 ## Upgrading from < 0.0.3
 
