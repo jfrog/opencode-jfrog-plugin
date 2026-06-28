@@ -9,7 +9,7 @@ import {
   readdirSync,
   statSync,
 } from 'fs';
-import { dirname, join } from 'path';
+import { delimiter, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ type ConfigWithJfrog = Config & {
   skills?: { paths?: string[] };
   mcp?: Record<string, unknown>;
 };
-type McpCredentials = { host: string; tokenVar: string };
+type McpCredentials = { baseUrl: string; tokenVar: string };
 type McpServer = NonNullable<Config['mcp']>[string];
 
 // ── Pure helpers ────────────────────────────────────────────────────────────────
@@ -48,24 +48,34 @@ const isNonEmptyDir = (dir: string): boolean => {
   }
 };
 
-/** True if `cmd` is found as an executable on PATH. Cheap synchronous scan; spawns no subprocess. */
-const commandExists = (cmd: string): boolean =>
-  (process.env.PATH ?? '').split(':').some((dir) => {
-    if (!dir) {
-      return false;
-    }
-    try {
-      accessSync(join(dir, cmd), constants.X_OK);
-      return true;
-    } catch {
-      return false;
-    }
-  });
+/**
+ * True if `cmd` is found as an executable on PATH. Cheap synchronous scan; spawns no subprocess.
+ * Cross-platform: uses the OS PATH delimiter and probes Windows executable extensions.
+ */
+const commandExists = (cmd: string): boolean => {
+  const names = process.platform === 'win32' ? [`${cmd}.exe`, `${cmd}.cmd`, `${cmd}.bat`] : [cmd];
+  return (process.env.PATH ?? '').split(delimiter).some((dir) =>
+    !dir
+      ? false
+      : names.some((name) => {
+          try {
+            accessSync(join(dir, name), constants.X_OK);
+            return true;
+          } catch {
+            return false;
+          }
+        })
+  );
+};
 
 const firstDefinedEnv = (names: readonly string[]): string | undefined =>
   names.map((name) => process.env[name]).find((value) => !!value);
 
-const normalizeHost = (raw: string): string => raw.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+// Preserve an explicit http/https scheme (default https when none); strip trailing slashes.
+const toBaseUrl = (raw: string): string => {
+  const trimmed = raw.replace(/\/+$/, '');
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
 
 const isJfCommand = (command: string): boolean => /(?:^|[\s;&|(])jf(?:\s|$)/.test(command);
 
@@ -82,7 +92,7 @@ const resolveMcpCredentials = (): McpCredentials | undefined => {
   }
   const host = firstDefinedEnv(HOST_ENV_VARS);
   const tokenVar = TOKEN_ENV_VARS.find((name) => process.env[name]);
-  return host && tokenVar ? { host: normalizeHost(host), tokenVar } : undefined;
+  return host && tokenVar ? { baseUrl: toBaseUrl(host), tokenVar } : undefined;
 };
 
 /**
@@ -92,9 +102,9 @@ const resolveMcpCredentials = (): McpCredentials | undefined => {
  * templates values loaded from opencode.json), so the token value must be materialized here. It comes
  * from the user's own environment and is used in-memory for the connection.
  */
-const mcpServerEntry = ({ host }: McpCredentials, token: string): McpServer => ({
+const mcpServerEntry = ({ baseUrl }: McpCredentials, token: string): McpServer => ({
   type: 'remote',
-  url: `https://${host}/mcp`,
+  url: `${baseUrl}/mcp`,
   oauth: false,
   headers: { Authorization: `Bearer ${token}` },
   enabled: true,
@@ -102,17 +112,23 @@ const mcpServerEntry = ({ host }: McpCredentials, token: string): McpServer => (
 
 // ── Config mutators (side-effecting, but localized) ───────────────────────────────
 
-/** Register the bundled skills dir. Returns false (and toasts) when the package is broken. */
+// The config hook runs multiple times per session; surface the broken-package error only once.
+let skillsErrorShown = false;
+
+/** Register the bundled skills dir. Returns false (and toasts once) when the package is broken. */
 const registerSkills = (cfg: ConfigWithJfrog, log: Logger, toast: Toast): boolean => {
   cfg.skills = cfg.skills ?? {};
   cfg.skills.paths = cfg.skills.paths ?? [];
 
   if (!isNonEmptyDir(BUNDLED_SKILLS_DIR)) {
-    const message =
-      `JFrog: bundled skills not found at ${BUNDLED_SKILLS_DIR}. ` +
-      'The plugin package may be broken; reinstall @jfrog/opencode-jfrog-plugin.';
-    log('ERROR ' + message);
-    toast(message, 'error');
+    if (!skillsErrorShown) {
+      skillsErrorShown = true;
+      const message =
+        `JFrog: bundled skills not found at ${BUNDLED_SKILLS_DIR}. ` +
+        'The plugin package may be broken; reinstall @jfrog/opencode-jfrog-plugin.';
+      log('ERROR ' + message);
+      toast(message, 'error');
+    }
     return false;
   }
 
@@ -146,7 +162,7 @@ const registerMcp = (cfg: ConfigWithJfrog, log: Logger): void => {
     return;
   }
   cfg.mcp.jfrog = mcpServerEntry(credentials, token);
-  log(`mcp: registered jfrog remote MCP at https://${credentials.host}/mcp`);
+  log(`mcp: registered jfrog remote MCP at ${credentials.baseUrl}/mcp`);
 };
 
 // ── Plugin ────────────────────────────────────────────────────────────────────
@@ -193,9 +209,8 @@ const jfrogOpencodePlugin: Plugin = async ({ client }) => {
   return {
     config: async (config) => {
       const cfg = config as ConfigWithJfrog;
-      if (!registerSkills(cfg, log, toast)) {
-        return;
-      }
+      // Skills and MCP are independent features — register both even if one is broken.
+      registerSkills(cfg, log, toast);
       registerMcp(cfg, log);
     },
     'tool.execute.before': async (input, output) => {

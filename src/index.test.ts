@@ -309,6 +309,18 @@ describe('JfrogOpencodePlugin JFrog remote MCP injection', () => {
     expect(mcpOf(await runConfig())?.jfrog?.url).toBe('https://x.jfrog.io/mcp');
   });
 
+  it('preserves an explicit http:// scheme (no silent https upgrade)', async () => {
+    process.env.JFROG_URL = 'http://internal.corp/';
+    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
+    expect(mcpOf(await runConfig())?.jfrog?.url).toBe('http://internal.corp/mcp');
+  });
+
+  it('defaults to https:// when the host omits a scheme', async () => {
+    process.env.JFROG_URL = 'bare.jfrog.io';
+    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
+    expect(mcpOf(await runConfig())?.jfrog?.url).toBe('https://bare.jfrog.io/mcp');
+  });
+
   it('accepts the legacy JF_URL host name', async () => {
     process.env.JF_URL = 'legacy.jfrog.io';
     process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
