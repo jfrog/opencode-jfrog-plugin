@@ -29,20 +29,13 @@ jobs:
   dispatch-publish:
     needs: process
     runs-on: ubuntu-latest
-    if: needs.process.outputs.releases_created == 'true' || needs.process.outputs.prs_created == 'true'
+    # Only publish once a release is actually cut (release PR merged → tag + GitHub release).
+    if: needs.process.outputs.releases_created == 'true'
     steps:
+      # Routes to publish-as-is.yml, the workflow npm authorizes for OIDC trusted publishing.
+      # (publish.yml is not a configured trusted publisher and fails with ENEEDAUTH.)
       - name: Dispatch publish for releases
-        if: needs.process.outputs.releases_created == 'true'
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: publish-package
-          client-payload: '{"tag": "latest"}'
-
-      - name: Dispatch publish for prerelease
-        if: needs.process.outputs.prs_created == 'true'
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: publish-package
-          client-payload: '{"tag": "next"}'
+          event-type: publish-package-as-is
