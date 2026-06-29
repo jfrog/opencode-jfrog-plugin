@@ -64,6 +64,41 @@ OpenCode then discovers the skills the same way it discovers any skill — they 
 tool and `/skills`, and the agent invokes them when relevant. There is no runtime download, unzip, or
 network call on load.
 
+## JFrog Platform MCP
+
+When the environment is configured, the plugin also registers the **JFrog Platform remote MCP server**
+(`https://<JFROG_URL>/mcp`) into `config.mcp.jfrog`, so the JFrog platform tools appear in OpenCode
+alongside the skills.
+
+**Prerequisites — both must be set:**
+
+- `JFROG_URL` — your JFrog platform URL (e.g. `https://mycompany.jfrog.io`). The legacy `JF_URL` and the
+  `JFROG_PLATFORM_URL` (Cursor-compat) names are also accepted.
+- `JFROG_ACCESS_TOKEN` — a **JWT access token** created with `jf access-token-create` (or the legacy
+  `JF_ACCESS_TOKEN`). This **must be a JWT access token, not a 64-character reference token** — reference
+  tokens are rejected by the `/mcp` endpoint.
+
+The MCP is authenticated with the token directly (`Authorization: Bearer …`, `oauth: false`), so it works
+headlessly with no interactive browser sign-in. Registration is a pure config mutation — there is no
+network call on plugin load.
+
+**Opt-out:** set `JFROG_MCP_DISABLE=true` to skip MCP registration entirely. You can also scope the
+exposed tools via OpenCode's `tools` globbing. If you define your own `mcp.jfrog` server in your config,
+the plugin leaves it untouched.
+
+**Context cost:** the JFrog MCP exposes ~56 tools whose schemas are loaded into the model context on
+every request (OpenCode has no lazy tool loading), measured at roughly **+32K tokens per request** in
+OpenCode (~44K in Cursor). The MCP is enabled by default for parity with the JFrog Cursor/Claude plugins;
+if that overhead matters for your workflow, disable it with `JFROG_MCP_DISABLE=true` or narrow the
+surface with `tools` globbing. The bundled **skills** do not carry this cost — only their short
+descriptions stay in context, and a skill's body loads only when it is invoked.
+
+**Token handling:** OpenCode does not expand `{env:…}` placeholders in config that a plugin injects at
+runtime, so the plugin reads `JFROG_ACCESS_TOKEN` from the environment and sets the resolved
+`Authorization: Bearer <token>` header directly. The token therefore lives in the in-memory session
+config (sourced from your environment); the plugin itself never writes it to disk. Prefer a short-lived
+token (`jf atc --expiry=…`).
+
 ## Updating the bundled skills
 
 The skills are vendored at a pinned version. Updating them is a build-time step and **requires a new
@@ -82,6 +117,12 @@ Logs are written to `<project-root>/.opencode/event-log.txt`.
 
 If you see a **"bundled skills not found"** error (a toast in the TUI and/or an `ERROR` line in the log),
 the installed package is incomplete or corrupted — reinstall `@jfrog/opencode-jfrog-plugin`.
+
+If the JFrog MCP shows **`401` / an SSE error** in `opencode mcp list` (or the TUI), the `/mcp` endpoint
+rejected the token. Make sure `JFROG_ACCESS_TOKEN` is a **JWT** access token (`jf atc`), not a 64-char
+reference token, and that it was issued for the same platform as `JFROG_URL` (check `jf c show`). MCP
+connection status is surfaced by OpenCode itself — this plugin only registers the server. With
+`JFROG_DEBUG_LOGS=true`, a non-JWT token also produces a `WARNING` line in the event log.
 
 ## Upgrading from < 0.0.3
 
