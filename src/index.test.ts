@@ -214,7 +214,7 @@ describe('JFrog setup hints (tool.execute.before)', () => {
 // V9 — vendored-content sanity: the committed skills/ tree must stay flat and well-formed.
 describe('vendored skills content sanity (V9)', () => {
   const skillsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills');
-  const EXPECTED_SKILLS = ['jfrog', 'jfrog-package-safety-and-download'];
+  const EXPECTED_SKILLS = ['jfrog', 'jfrog-ai-catalog-skills', 'jfrog-package-safety-and-download'];
 
   function readFrontmatter(md: string): { name?: string; description?: string } {
     const match = md.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -227,7 +227,7 @@ describe('vendored skills content sanity (V9)', () => {
     return { name, description };
   }
 
-  it('contains exactly the two vendored skills (flat layout)', () => {
+  it('contains exactly the three vendored skills (flat layout)', () => {
     const dirs = readdirSync(skillsDir)
       .filter((entry) => statSync(join(skillsDir, entry)).isDirectory())
       .sort();

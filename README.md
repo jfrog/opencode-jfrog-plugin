@@ -6,13 +6,15 @@ load time, so JFrog capabilities are available to the agent out of the box.
 
 ## What's included
 
-The plugin bundles two canonical skills, vendored (pinned) from
+The plugin bundles three canonical skills, vendored (pinned) from
 [`jfrog/jfrog-skills`](https://github.com/jfrog/jfrog-skills) and committed under `skills/`:
 
 - **`jfrog`** — interact with the JFrog Platform via the JFrog CLI, MCP server, and REST/GraphQL APIs
   (Artifactory, Xray, builds, permissions, projects, release lifecycle, advanced security, and more).
 - **`jfrog-package-safety-and-download`** — check package safety/curation status and download packages
   through JFrog.
+- **`jfrog-ai-catalog-skills`** — discover, install, manage, and publish agent skills hosted in the
+  JFrog AI Catalog via the JFrog CLI (`jf skills`) and JFrog Agent Guard.
 
 The skills ship **with the plugin** (vendored and pinned). They are **not** downloaded at runtime, so
 the plugin works offline and the skill set is reproducible for a given plugin version.
