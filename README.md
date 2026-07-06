@@ -130,9 +130,9 @@ connection status is surfaced by OpenCode itself — this plugin only registers 
 
 This release changes behavior in ways that are **not** backward compatible:
 
-- **Skill catalog changed (7 → 2).** The previous Artifactory skills — `skill-install`,
+- **Skill catalog changed (7 → 3).** The previous Artifactory skills — `skill-install`,
   `skill-publish`, `jfrog-cli`, `opencode-jfrog-mcp`, `jfrog-setup-package-managers`, `jfrog-curation`,
-  `jfrog-packages` — are replaced by the two canonical skills above. Invocations of the removed skill
+  `jfrog-packages` — are replaced by the three canonical skills above. Invocations of the removed skill
   names no longer exist; that functionality now folds into the `jfrog` skill.
 - **Package-manager auto-setup was removed.** Earlier versions ran `jf setup <pm>` automatically on
   session start. That is gone; the plugin now emits an interim one-line nudge to run
