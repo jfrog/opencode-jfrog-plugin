@@ -6,13 +6,15 @@ load time, so JFrog capabilities are available to the agent out of the box.
 
 ## What's included
 
-The plugin bundles two canonical skills, vendored (pinned) from
+The plugin bundles three canonical skills, vendored (pinned) from
 [`jfrog/jfrog-skills`](https://github.com/jfrog/jfrog-skills) and committed under `skills/`:
 
 - **`jfrog`** — interact with the JFrog Platform via the JFrog CLI, MCP server, and REST/GraphQL APIs
   (Artifactory, Xray, builds, permissions, projects, release lifecycle, advanced security, and more).
 - **`jfrog-package-safety-and-download`** — check package safety/curation status and download packages
   through JFrog.
+- **`jfrog-ai-catalog-skills`** — discover, install, manage, and publish agent skills hosted in the
+  JFrog AI Catalog via the JFrog CLI (`jf skills`) and JFrog Agent Guard.
 
 The skills ship **with the plugin** (vendored and pinned). They are **not** downloaded at runtime, so
 the plugin works offline and the skill set is reproducible for a given plugin version.
@@ -128,9 +130,9 @@ connection status is surfaced by OpenCode itself — this plugin only registers 
 
 This release changes behavior in ways that are **not** backward compatible:
 
-- **Skill catalog changed (7 → 2).** The previous Artifactory skills — `skill-install`,
+- **Skill catalog changed (7 → 3).** The previous Artifactory skills — `skill-install`,
   `skill-publish`, `jfrog-cli`, `opencode-jfrog-mcp`, `jfrog-setup-package-managers`, `jfrog-curation`,
-  `jfrog-packages` — are replaced by the two canonical skills above. Invocations of the removed skill
+  `jfrog-packages` — are replaced by the three canonical skills above. Invocations of the removed skill
   names no longer exist; that functionality now folds into the `jfrog` skill.
 - **Package-manager auto-setup was removed.** Earlier versions ran `jf setup <pm>` automatically on
   session start. That is gone; the plugin now emits an interim one-line nudge to run
