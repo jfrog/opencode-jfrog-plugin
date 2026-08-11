@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/jfrog/opencode-jfrog-plugin/compare/v0.1.0...v0.2.0) (2026-08-11)
+
+
+### Features
+
+* **skills:** bump vendored jfrog-skills v0.14.0 -&gt; v0.16.0 ([#22](https://github.com/jfrog/opencode-jfrog-plugin/issues/22)) ([0af4dd9](https://github.com/jfrog/opencode-jfrog-plugin/commit/0af4dd9bb1deb65cc96f14be7962a838246574f5))
+* **skills:** sync skills to v0.22.0 ([#25](https://github.com/jfrog/opencode-jfrog-plugin/issues/25)) ([016b99b](https://github.com/jfrog/opencode-jfrog-plugin/commit/016b99bbe0e18f446f57bd4cad3e9f1309ecf40c))
+
 ## [0.1.0](https://github.com/jfrog/opencode-jfrog-plugin/compare/v0.0.4...v0.1.0) (2026-06-29)
 
 
