@@ -15,7 +15,7 @@ The vendoring source is declared in `sync-skills-vendor.json` at the repo root:
 ```json
 {
   "repo": "jfrog/jfrog-skills",
-  "pin": "v0.16.0",
+  "pin": "v0.22.0",
   "paths": ["skills"]
 }
 ```
@@ -40,7 +40,15 @@ The result is a flat, committed tree:
 skills/
   jfrog/SKILL.md (+ references/ scripts/ assets/)
   jfrog-package-safety-and-download/SKILL.md
+  jfrog-setup-package-managers/SKILL.md
+  jfrog-ai-catalog-skills/SKILL.md
+  jfrog-mcp-management/SKILL.md
+  jfrog-reference-architecture/SKILL.md
 ```
+
+> **Note:** the exact set of skill directories is whatever the pinned `jfrog/jfrog-skills` release
+> ships under `skills/` — the sync copies the whole tree. `jfrog-mcp-management/` (JFrog Agent Guard
+> MCP management, including the OpenCode harness) is included as of the pinned `v0.22.0`.
 
 The script is dependency-free Node ESM and makes no changes outside the vendored `paths`.
 
@@ -50,7 +58,7 @@ The script is dependency-free Node ESM and makes no changes outside the vendored
 2. Re-vendor:
 
    ```bash
-   mise run sync-skills
+   mise run sync-skills   # or, without mise: node scripts/sync-skills.mjs
    ```
 
 3. Review the diff under `skills/` and commit the regenerated tree **together with** the updated
