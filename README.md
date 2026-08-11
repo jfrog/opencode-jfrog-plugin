@@ -40,9 +40,11 @@ Before installing, make sure you have:
 
 ### Install the OpenCode plugin
 
-OpenCode has no plugin marketplace — you install by referencing the npm package
+The plugin is published to public npm as
 [`@jfrog/opencode-jfrog-plugin`](https://www.npmjs.com/package/@jfrog/opencode-jfrog-plugin)
-in your OpenCode config (`opencode.json`):
+and listed on the [OpenCode ecosystem page](https://opencode.ai/docs/ecosystem). OpenCode has
+no plugin marketplace — you install by referencing the npm package in your OpenCode config
+(`opencode.json`):
 
 ```json
 {
@@ -84,6 +86,10 @@ directory (shipped inside the package) and registers it with OpenCode through th
 skills the same way it discovers any skill — via the `skill` tool and `/skills` — and
 invokes them when relevant. There is no runtime download, unzip, or network call on
 load.
+
+The plugin is **self-contained**: everything it needs ships in the published npm tarball
+(`dist/` + the vendored `skills/`), with no runtime downloads and no dependency on
+`releases.jfrog.io` or any other external artifact host.
 
 ---
 
