@@ -19,9 +19,8 @@ const LOG_FILE = join(process.cwd(), '.opencode', 'event-log.txt');
 // Works for both src/index.ts (dev) and dist/index.js (installed): `..` lands on skills/ in both.
 const BUNDLED_SKILLS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills');
 
-// Env var names, in precedence order (new JFROG_* first, then legacy JF_* / Cursor's JFROG_PLATFORM_URL).
-const HOST_ENV_VARS = ['JFROG_URL', 'JF_URL', 'JFROG_PLATFORM_URL'] as const;
-const TOKEN_ENV_VARS = ['JFROG_ACCESS_TOKEN', 'JF_ACCESS_TOKEN'] as const;
+// Env var holding the JFrog platform host for the MCP URL, e.g. `mycompany.jfrog.io`
+const HOST_ENV_VAR = 'JFROG_PLATFORM_URL';
 
 const JF_CLI_INSTALL_HINT =
   'JFrog: the `jf` CLI was not found on your PATH. Install it ' +
@@ -35,7 +34,7 @@ type ConfigWithJfrog = Config & {
   skills?: { paths?: string[] };
   mcp?: Record<string, unknown>;
 };
-type McpCredentials = { baseUrl: string; tokenVar: string };
+type McpCredentials = { baseUrl: string };
 type McpServer = NonNullable<Config['mcp']>[string];
 
 // ── Pure helpers ────────────────────────────────────────────────────────────────
@@ -68,9 +67,6 @@ const commandExists = (cmd: string): boolean => {
   );
 };
 
-const firstDefinedEnv = (names: readonly string[]): string | undefined =>
-  names.map((name) => process.env[name]).find((value) => !!value);
-
 // Preserve an explicit http/https scheme (default https when none); strip trailing slashes.
 const toBaseUrl = (raw: string): string => {
   const trimmed = raw.replace(/\/+$/, '');
@@ -79,34 +75,25 @@ const toBaseUrl = (raw: string): string => {
 
 const isJfCommand = (command: string): boolean => /(?:^|[\s;&|(])jf(?:\s|$)/.test(command);
 
-/** JFrog JWT access tokens are base64url JWTs that begin with `eyJ`; reference tokens do not. */
-const looksLikeJwt = (token: string): boolean => token.startsWith('eyJ');
-
 /**
- * Resolve the JFrog MCP host + token env var name from the environment.
- * Returns undefined when MCP is disabled or either value is absent.
+ * Resolve the JFrog MCP host from `JFROG_PLATFORM_URL`.
+ * Returns undefined when MCP is disabled or the host is absent.
  */
 const resolveMcpCredentials = (): McpCredentials | undefined => {
   if (process.env.JFROG_MCP_DISABLE === 'true') {
     return undefined;
   }
-  const host = firstDefinedEnv(HOST_ENV_VARS);
-  const tokenVar = TOKEN_ENV_VARS.find((name) => process.env[name]);
-  return host && tokenVar ? { baseUrl: toBaseUrl(host), tokenVar } : undefined;
+  const host = process.env[HOST_ENV_VAR];
+  return host ? { baseUrl: toBaseUrl(host) } : undefined;
 };
 
 /**
- * Build the OpenCode remote-MCP entry with the resolved Bearer token.
+ * Build the OpenCode remote-MCP entry for the JFrog Platform MCP (OAuth only).
  *
- * Note: OpenCode does NOT expand `{env:...}` in config injected by a plugin at runtime (it only
- * templates values loaded from opencode.json), so the token value must be materialized here. It comes
- * from the user's own environment and is used in-memory for the connection.
  */
-const mcpServerEntry = ({ baseUrl }: McpCredentials, token: string): McpServer => ({
+const mcpServerEntry = ({ baseUrl }: McpCredentials): McpServer => ({
   type: 'remote',
   url: `${baseUrl}/mcp`,
-  oauth: false,
-  headers: { Authorization: `Bearer ${token}` },
   enabled: true,
 });
 
@@ -144,25 +131,17 @@ const registerMcp = (cfg: ConfigWithJfrog, log: Logger): void => {
   const credentials = resolveMcpCredentials();
   if (!credentials) {
     log(
-      'mcp: jfrog remote MCP not registered (need JFROG_URL + JFROG_ACCESS_TOKEN; or JFROG_MCP_DISABLE=true)'
+      'mcp: jfrog remote MCP not registered (need JFROG_PLATFORM_URL; or JFROG_MCP_DISABLE=true)'
     );
     return;
-  }
-
-  const token = process.env[credentials.tokenVar] ?? '';
-  if (!looksLikeJwt(token)) {
-    log(
-      `mcp: WARNING ${credentials.tokenVar} does not look like a JWT access token; the MCP will likely ` +
-        'fail with HTTP 401. Create one with `jf atc` (a reference token will not work).'
-    );
   }
 
   cfg.mcp = cfg.mcp ?? {};
   if (cfg.mcp.jfrog) {
     return;
   }
-  cfg.mcp.jfrog = mcpServerEntry(credentials, token);
-  log(`mcp: registered jfrog remote MCP at ${credentials.baseUrl}/mcp`);
+  cfg.mcp.jfrog = mcpServerEntry(credentials);
+  log(`mcp: registered jfrog remote MCP (OAuth) at ${credentials.baseUrl}/mcp`);
 };
 
 // ── Plugin ────────────────────────────────────────────────────────────────────
@@ -189,7 +168,7 @@ const jfrogOpencodePlugin: Plugin = async ({ client }) => {
   log('JfrogOpencodePlugin starting...');
 
   // Detect the JFrog CLI ONCE at load (cached for the session) so the per-tool hook stays a cheap
-  // boolean check. MCP setup issues (missing env, bad/non-JWT token, 401) are surfaced by OpenCode's
+  // boolean check. MCP setup issues (missing env, OAuth not completed, 401) are surfaced by OpenCode's
   // own `mcp list`/TUI and documented in the README — the plugin does not nag for those.
   const hasJfCli = commandExists('jf');
   log('jf CLI on PATH: ' + hasJfCli);

@@ -108,15 +108,7 @@ describe('JfrogOpencodePlugin config hook', () => {
 
 // Just-in-time setup hints surfaced from the tool hook on the first `jf` command.
 describe('JFrog setup hints (tool.execute.before)', () => {
-  const ENV_KEYS = [
-    'PATH',
-    'JFROG_URL',
-    'JF_URL',
-    'JFROG_PLATFORM_URL',
-    'JFROG_ACCESS_TOKEN',
-    'JF_ACCESS_TOKEN',
-    'JFROG_MCP_DISABLE',
-  ];
+  const ENV_KEYS = ['PATH', 'JFROG_PLATFORM_URL', 'JFROG_MCP_DISABLE'];
   let saved: Record<string, string | undefined>;
   let bin: string | undefined;
 
@@ -164,19 +156,15 @@ describe('JFrog setup hints (tool.execute.before)', () => {
 
   it('shows NO hint when `jf` is present (MCP setup is surfaced by OpenCode + README, not toasts)', async () => {
     installJf();
-    // Even a non-JWT token / missing env produces no toast — those are not the plugin's concern now.
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'cmVmdGtuOnJlZmVyZW5jZQ';
+    // With `jf` present the plugin surfaces no setup toast — MCP setup is OpenCode's concern, not ours.
     const client = createClient();
     const hooks = await server(pluginInput(client));
     await runBash(hooks, 'jf rt ping');
     expect(toastCount(client, 'JFrog:')).toBe(0);
   });
 
-  it('shows only the install hint when `jf` is absent, regardless of MCP env', async () => {
+  it('shows the install hint when `jf` is absent', async () => {
     // PATH='' (jf absent) is the describe default.
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'eyJhbGciOiJSUzI1NiJ9.payload.sig';
     const client = createClient();
     const hooks = await server(pluginInput(client));
     await runBash(hooks, 'jf rt ping');
@@ -253,16 +241,9 @@ describe('vendored skills content sanity (V9)', () => {
   }
 });
 
-// JFrog Platform remote MCP injection via the config hook (token auth, headless).
+// JFrog Platform remote MCP injection via the config hook (OAuth only — no token, no headers).
 describe('JfrogOpencodePlugin JFrog remote MCP injection', () => {
-  const ENV_KEYS = [
-    'JFROG_URL',
-    'JF_URL',
-    'JFROG_PLATFORM_URL',
-    'JFROG_ACCESS_TOKEN',
-    'JF_ACCESS_TOKEN',
-    'JFROG_MCP_DISABLE',
-  ];
+  const ENV_KEYS = ['JFROG_PLATFORM_URL', 'JFROG_MCP_DISABLE'];
   let savedEnv: Record<string, string | undefined>;
 
   beforeEach(() => {
@@ -291,91 +272,42 @@ describe('JfrogOpencodePlugin JFrog remote MCP injection', () => {
     return config;
   }
 
-  it('injects a remote jfrog MCP when JFROG_URL + JFROG_ACCESS_TOKEN are set', async () => {
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
+  it('injects an OAuth remote jfrog MCP when JFROG_PLATFORM_URL is set', async () => {
+    process.env.JFROG_PLATFORM_URL = 'example.jfrog.io';
+    // A token in the env must be ignored — the plugin no longer does Bearer auth.
+    process.env.JFROG_ACCESS_TOKEN = 'eyJshouldbeignored';
     const jfrog = mcpOf(await runConfig())?.jfrog;
     expect(jfrog).toBeDefined();
     expect(jfrog?.type).toBe('remote');
     expect(jfrog?.url).toBe('https://example.jfrog.io/mcp');
-    expect(jfrog?.oauth).toBe(false);
     expect(jfrog?.enabled).toBe(true);
+    // OAuth: no Authorization header, and oauth auto-detection is left enabled (never set to false).
+    expect(jfrog?.headers).toBeUndefined();
+    expect(jfrog?.oauth).toBeUndefined();
   });
 
-  it('injects the resolved token into the Authorization header', async () => {
-    // OpenCode does not expand {env:} in plugin-injected config, so the token value is materialized.
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'eyJresolvedtokenvalue';
-    const jfrog = mcpOf(await runConfig())?.jfrog;
-    expect(jfrog?.headers?.Authorization).toBe('Bearer eyJresolvedtokenvalue');
-  });
-
-  it('normalizes scheme and trailing slash in the host', async () => {
-    process.env.JFROG_URL = 'https://x.jfrog.io/';
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
-    expect(mcpOf(await runConfig())?.jfrog?.url).toBe('https://x.jfrog.io/mcp');
-  });
-
-  it('preserves an explicit http:// scheme (no silent https upgrade)', async () => {
-    process.env.JFROG_URL = 'http://internal.corp/';
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
-    expect(mcpOf(await runConfig())?.jfrog?.url).toBe('http://internal.corp/mcp');
-  });
-
-  it('defaults to https:// when the host omits a scheme', async () => {
-    process.env.JFROG_URL = 'bare.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
+  it('defaults to https:// for a bare host (the expected JFROG_PLATFORM_URL form)', async () => {
+    process.env.JFROG_PLATFORM_URL = 'bare.jfrog.io';
     expect(mcpOf(await runConfig())?.jfrog?.url).toBe('https://bare.jfrog.io/mcp');
   });
 
-  it('accepts the legacy JF_URL host name', async () => {
-    process.env.JF_URL = 'legacy.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
-    expect(mcpOf(await runConfig())?.jfrog?.url).toBe('https://legacy.jfrog.io/mcp');
-  });
-
-  it('accepts the cursor-compat JFROG_PLATFORM_URL host name', async () => {
-    process.env.JFROG_PLATFORM_URL = 'cursor.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
-    expect(mcpOf(await runConfig())?.jfrog?.url).toBe('https://cursor.jfrog.io/mcp');
-  });
-
-  it('uses the legacy JF_ACCESS_TOKEN value when only it is set', async () => {
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    process.env.JF_ACCESS_TOKEN = 'eyJlegacytokenvalue';
-    const auth = mcpOf(await runConfig())?.jfrog?.headers?.Authorization;
-    expect(auth).toBe('Bearer eyJlegacytokenvalue');
+  it('tolerates an explicit scheme and a trailing slash', async () => {
+    process.env.JFROG_PLATFORM_URL = 'https://x.jfrog.io/';
+    expect(mcpOf(await runConfig())?.jfrog?.url).toBe('https://x.jfrog.io/mcp');
   });
 
   it('skips injection when the host is missing', async () => {
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
     expect(mcpOf(await runConfig())).toBeUndefined();
-  });
-
-  it('skips injection when the token is missing', async () => {
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    expect(mcpOf(await runConfig())).toBeUndefined();
-  });
-
-  it('registers the MCP even when the token is not a JWT (shape only warns, never gates)', async () => {
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'reference-token-not-a-jwt';
-    const jfrog = mcpOf(await runConfig())?.jfrog;
-    expect(jfrog).toBeDefined();
-    expect(jfrog?.url).toBe('https://example.jfrog.io/mcp');
-    expect(jfrog?.headers?.Authorization).toBe('Bearer reference-token-not-a-jwt');
   });
 
   it('skips injection when JFROG_MCP_DISABLE=true', async () => {
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
+    process.env.JFROG_PLATFORM_URL = 'example.jfrog.io';
     process.env.JFROG_MCP_DISABLE = 'true';
     expect(mcpOf(await runConfig())).toBeUndefined();
   });
 
   it('does not overwrite a user-defined jfrog MCP entry', async () => {
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
+    process.env.JFROG_PLATFORM_URL = 'example.jfrog.io';
     const existing: McpEntry = { type: 'remote', url: 'https://user.example/mcp', enabled: false };
     const hooks = await server(pluginInput());
     const config = { mcp: { jfrog: existing } } as unknown as Config;
@@ -384,8 +316,7 @@ describe('JfrogOpencodePlugin JFrog remote MCP injection', () => {
   });
 
   it('is idempotent across repeated config calls', async () => {
-    process.env.JFROG_URL = 'https://example.jfrog.io';
-    process.env.JFROG_ACCESS_TOKEN = 'jwt-token';
+    process.env.JFROG_PLATFORM_URL = 'example.jfrog.io';
     const hooks = await server(pluginInput());
     const config = {} as Config;
     await hooks.config?.(config);

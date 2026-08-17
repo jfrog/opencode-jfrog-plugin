@@ -11,7 +11,7 @@ The JFrog plugin provides the following capabilities, grouped by component:
 
 | Component | Feature | Description |
 | --- | --- | --- |
-| **MCP** | JFrog Platform MCP server | Registers the remote JFrog Platform MCP (`https://<JFROG_URL>/mcp`, token auth) into OpenCode's `config.mcp.jfrog`. Opt out with `JFROG_MCP_DISABLE=true`. |
+| **MCP** | JFrog Platform MCP server | Registers the remote JFrog Platform MCP (`https://${JFROG_PLATFORM_URL}/mcp`, OAuth) into OpenCode's `config.mcp.jfrog`. Authenticate once with `opencode mcp auth jfrog`. Opt out with `JFROG_MCP_DISABLE=true`. |
 | **Skill** | JFrog Platform | Interact with Artifactory repositories, builds, permissions, users, access tokens, projects, release bundles, and platform administration via the JFrog CLI and REST/GraphQL APIs. Also covers security audits, CVE lookups, and Advanced Security exposure queries. |
 | **Skill** | Package safety & download | Check whether npm, Maven, PyPI, Go, and other packages are safe, curated, or allowed, then download them through Artifactory remote caches or curation-aware package managers. |
 | **Skill** | Agent Guard | OpenCode manages MCPs through the JFrog Agent Guard. Discover, install, configure, update, and remove MCP servers from the JFrog AI Catalog approved for your project, and authenticate to remote HTTP MCPs via OAuth, API key, or bearer token. |
@@ -26,7 +26,7 @@ plugin version.
 
 Before installing, make sure you have:
 
-- **JFrog host URL and access token** — A [JFrog Platform](https://jfrog.com) instance you can authenticate against.
+- **JFrog host** — A [JFrog Platform](https://jfrog.com) instance you can authenticate against, exposed to the plugin as `JFROG_PLATFORM_URL` (e.g. `mycompany.jfrog.io`). The JFrog Platform MCP server authenticates via OAuth (browser sign-in).
 - **OpenCode** — Installed (verified against OpenCode **1.17.7** and newer, which honors `config.skills.paths` in object form).
 - **Node.js** (≥ 18) — with `npx` on your `PATH` (used by the Agent Guard).
 - **Skill runtime requirements** — `jf` CLI, `jq`, and `curl` on `PATH`, plus a configured JFrog CLI server. For the minimum versions, see the upstream skills [`Requirements`](https://github.com/jfrog/jfrog-skills/blob/v0.22.0/README.md#requirements). Configure the CLI with `jf login` / `jf config add` — see [Authentication](#authentication).
@@ -108,25 +108,30 @@ this machine:
 
 3. Follow the interactive prompts to enter your JFrog platform URL and access token.
 
-The JFrog Platform MCP server authenticates separately from an access token — see
-below.
+The JFrog Platform MCP server authenticates separately, via OAuth — see below.
 
 ---
 
 ## JFrog Platform MCP server
 
-When the environment is configured, the plugin registers the **JFrog Platform remote
-MCP server** (`https://<JFROG_URL>/mcp`) into `config.mcp.jfrog`, so the JFrog platform
-tools appear in OpenCode alongside the skills.
+When `JFROG_PLATFORM_URL` is set, the plugin registers the **JFrog Platform remote MCP
+server** (`https://${JFROG_PLATFORM_URL}/mcp`) into `config.mcp.jfrog`, so the JFrog
+platform tools appear in OpenCode alongside the skills.
 
-**Prerequisites — both must be set:**
+**Prerequisite — set the JFrog host:**
 
-- `JFROG_URL` — your JFrog platform URL (e.g. `https://mycompany.jfrog.io`). The legacy `JF_URL` and the `JFROG_PLATFORM_URL` (Cursor-compat) names are also accepted.
-- `JFROG_ACCESS_TOKEN` — a **JWT access token** created with `jf access-token-create` (or the legacy `JF_ACCESS_TOKEN`). This **must be a JWT access token, not a 64-character reference token** — reference tokens are rejected by the `/mcp` endpoint.
+- `JFROG_PLATFORM_URL` — your JFrog platform host, e.g. `mycompany.jfrog.io` (bare host, no scheme — `https://` is added automatically).
 
-The MCP is authenticated with the token directly (`Authorization: Bearer …`, `oauth: false`),
-so it works headlessly with no interactive browser sign-in. Registration is a pure
-config mutation — there is no network call on plugin load.
+**Authentication is OAuth only.** The plugin registers the entry with OAuth
+auto-detection enabled. OpenCode discovers the OAuth authorization server advertised 
+by the `/mcp` endpoint, and you sign in once through the browser:
+
+```bash
+opencode mcp auth jfrog     # runs the OAuth flow and stores the tokens
+opencode mcp list           # jfrog should now show as connected
+```
+
+Related commands: `opencode mcp logout jfrog` and `opencode mcp debug jfrog`.
 
 **Opt-out:** set `JFROG_MCP_DISABLE=true` to skip MCP registration entirely. You can
 also scope the exposed tools via OpenCode's `tools` globbing. If you define your own
@@ -138,12 +143,6 @@ model context on every request (OpenCode has no lazy tool loading), measured at 
 `JFROG_MCP_DISABLE=true` or narrow the surface with `tools` globbing. The bundled
 **skills** do not carry this cost — only their short descriptions stay in context, and a
 skill's body loads only when it is invoked.
-
-**Token handling:** OpenCode does not expand `{env:…}` placeholders in config that a
-plugin injects at runtime, so the plugin reads `JFROG_ACCESS_TOKEN` from the environment
-and sets the resolved `Authorization: Bearer <token>` header directly. The token
-therefore lives in the in-memory session config (sourced from your environment); the
-plugin itself never writes it to disk. Prefer a short-lived token (`jf atc --expiry=…`).
 
 ---
 
@@ -203,7 +202,7 @@ export JFROG_DEBUG_LOGS=true
 Logs are written to `<project-root>/.opencode/event-log.txt`.
 
 - **"bundled skills not found"** (a toast in the TUI and/or an `ERROR` line in the log) — the installed package is incomplete or corrupted; reinstall `@jfrog/opencode-jfrog-plugin`.
-- **`401` / SSE error** for the JFrog MCP in `opencode mcp list` (or the TUI) — the `/mcp` endpoint rejected the token. Make sure `JFROG_ACCESS_TOKEN` is a **JWT** access token (`jf atc`), not a 64-char reference token, and that it was issued for the same platform as `JFROG_URL` (check `jf c show`). With `JFROG_DEBUG_LOGS=true`, a non-JWT token also produces a `WARNING` line in the event log.
+- **`401` / SSE error** for the JFrog MCP in `opencode mcp list` (or the TUI) — you have not completed the OAuth sign-in, or the stored OAuth session expired. Run `opencode mcp auth jfrog` to (re)authenticate, and confirm `JFROG_PLATFORM_URL` points at the platform you signed in to. Use `opencode mcp debug jfrog` to inspect the OAuth connection, or `opencode mcp logout jfrog` to clear a stale session and re-auth.
 
 For MCP-registry issues, see the [JFrog MCP Registry troubleshooting guide](https://docs.jfrog.com/ai-ml/docs/mcp-registry-troubleshooting).
 
