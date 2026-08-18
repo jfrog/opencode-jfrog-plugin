@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/jfrog/opencode-jfrog-plugin/compare/v0.2.0...v1.0.0) (2026-08-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* JFROG_URL/JFROG_ACCESS_TOKEN are no longer used for the JFrog Platform MCP; authentication is OAuth via JFROG_PLATFORM_URL.
+
+### Features
+
+* JFrog Platform MCP authenticates via OAuth ([#31](https://github.com/jfrog/opencode-jfrog-plugin/issues/31)) ([b2dcdbc](https://github.com/jfrog/opencode-jfrog-plugin/commit/b2dcdbce0ae5960a1cdfb96ce77c0ae67af9846f))
+
 ## [0.2.0](https://github.com/jfrog/opencode-jfrog-plugin/compare/v0.1.0...v0.2.0) (2026-08-11)
 
 
