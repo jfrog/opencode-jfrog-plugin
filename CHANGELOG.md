@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0](https://github.com/jfrog/opencode-jfrog-plugin/compare/v0.2.0...v1.0.0) (2026-08-18)
+## [0.3.0](https://github.com/jfrog/opencode-jfrog-plugin/compare/v0.2.0...v0.3.0) (2026-08-18)
 
 
 ### ⚠ BREAKING CHANGES
