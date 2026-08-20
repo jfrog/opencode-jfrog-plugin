@@ -7,30 +7,72 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  process:
+  release:
     runs-on: ubuntu-latest
     outputs:
-      releases_created: ${{ steps.release-please.outputs.releases_created }}
-      prs_created: ${{ steps.release-please.outputs.prs_created }}
+      released: ${{ steps.release_gate.outputs.should_release }}
     steps:
-      - uses: google-github-actions/release-please-action@v4
-        id: release-please
+      - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: node
-          skip-github-pull-request: false
+          fetch-depth: 0
+
+      - name: Read version from package.json
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -er '.version' package.json)
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::package.json version '$VERSION' is not X.Y.Z — refusing to release"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Compare version against latest release tag
+        id: release_gate
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          git fetch --tags origin
+          LATEST=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -1)
+          if [ -z "$LATEST" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "No prior release tag — v${VERSION} will be the first release"
+            exit 0
+          fi
+          LATEST_VERSION="${LATEST#v}"
+          if [ "$VERSION" = "$LATEST_VERSION" ]; then
+            echo "::error::v${VERSION} was already released — bump package.json before merging"
+            exit 1
+          fi
+          TAG_FOR_VERSION="v${VERSION}"
+          LOWEST=$(printf '%s\n%s\n' "$TAG_FOR_VERSION" "$LATEST" | sort -V | head -1)
+          if [ "$LOWEST" = "$TAG_FOR_VERSION" ]; then
+            echo "::error::package.json version ${VERSION} is older than the latest release ${LATEST} — check for an accidental revert"
+            exit 1
+          fi
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "Version ${VERSION} is newer than ${LATEST} — proceeding with release"
+
+      - name: Create GitHub Release
+        if: steps.release_gate.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --target "$GITHUB_SHA" \
+            --title "Release v${{ steps.version.outputs.version }}" \
+            --generate-notes
 
   dispatch-publish:
-    needs: process
+    needs: release
     runs-on: ubuntu-latest
-    # Only publish once a release is actually cut (release PR merged → tag + GitHub release).
-    if: needs.process.outputs.releases_created == 'true'
+    if: needs.release.outputs.released == 'true'
     steps:
       # Routes to publish-as-is.yml, the workflow npm authorizes for OIDC trusted publishing.
       # (publish.yml is not a configured trusted publisher and fails with ENEEDAUTH.)
