@@ -5,6 +5,10 @@ on:
   repository_dispatch:
     types: [publish-package-as-is]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read
@@ -13,8 +17,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      # repository_dispatch checks out the default branch by default; the payload from release.yml
+      # pins this to the released commit so the published version matches the release.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.client_payload.ref || github.sha }}
           fetch-depth: 0
           fetch-tags: true
 
@@ -32,4 +39,4 @@ jobs:
           # set npmjs.com as the registry
           npm config set registry https://registry.npmjs.org/
           echo "Publishing version as is"
-          mise run publish  
+          mise run publish

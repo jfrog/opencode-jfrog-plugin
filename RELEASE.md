@@ -3,20 +3,26 @@
 This project cuts releases from the `version` field in [`package.json`](package.json).
 Every push to `main` compares that version against the latest `vX.Y.Z` tag:
 
-- **Newer than latest tag** → build a GitHub Release and dispatch npm publishing.
+- **Newer than latest tag** → create a GitHub Release and dispatch npm publishing.
 - **Equal to latest tag** → fail with a clear "already released" error.
 - **Older than latest tag** → fail with a revert warning.
 
 There is no commit-message marker, no manual tag push, and no release-please bot.
 
+> **Note:** v0.3.1 is the first version released end to end through this path. Watch that run
+> before trusting it unattended.
+
 ## Cutting a release
 
-1. In your PR, bump the `version` field in `package.json` to a not-yet-released semver.
+1. In your PR, bump the `version` field in `package.json` to a not-yet-released semver
+   (`mise run version` bumps the patch; `--bump minor` / `--bump major` for the rest).
 2. Merge to `main`.
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) creates the GitHub Release
 (`gh release create --target`, with `--generate-notes`), then dispatches
-[`publish-as-is.yml`](.github/workflows/publish-as-is.yml) for npm OIDC trusted publishing.
+[`publish-as-is.yml`](.github/workflows/publish-as-is.yml) for npm OIDC trusted publishing. The
+dispatch carries the released commit SHA, so the published tarball is built from exactly that
+commit even if `main` has moved on.
 
 ## NPM Trusted Publishing
 
@@ -40,4 +46,4 @@ be configured. See npm's [Trusted Publishers](https://docs.npmjs.com/trusted-pub
 ## Changelog
 
 Release notes come from `gh release create --generate-notes` (merged PRs/commits since the last
-tag). `CHANGELOG.md` is not auto-updated.
+tag). `CHANGELOG.md` is frozen as of v0.3.0 and is no longer updated.
