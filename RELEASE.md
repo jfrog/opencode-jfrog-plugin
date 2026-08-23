@@ -24,6 +24,22 @@ There is no commit-message marker, no manual tag push, and no release-please bot
 dispatch carries the released commit SHA, so the published tarball is built from exactly that
 commit even if `main` has moved on.
 
+npm provenance on a `repository_dispatch` run attests `GITHUB_SHA` (default-branch HEAD), not
+the payload ref. If `main` has moved, `publish-as-is.yml` fails rather than attesting the wrong
+commit. Re-run it via `workflow_dispatch` on the `vX.Y.Z` tag (or on that commit) so checkout
+and provenance agree.
+
+## If npm publish fails after the GitHub Release exists
+
+The GitHub Release is created in `release.yml` before npm publish runs. A later publish failure
+leaves a tag/release for a version that is not on npm, and the next push of that same version
+fails with "already released". Do **not** bump just to retry.
+
+1. Re-run [`publish-as-is.yml`](.github/workflows/publish-as-is.yml) via `workflow_dispatch` on
+   the release tag. That publishes `package.json`'s version from that commit.
+2. If the published tarball is wrong, bump to a new version in a follow-up PR and merge; the
+   gate will cut a new GitHub Release and dispatch publish again.
+
 ## NPM Trusted Publishing
 
 This project uses [NPM Trusted Publishing](https://docs.npmjs.com/trusted-publishers) with GitHub
