@@ -5,6 +5,10 @@ scanning, supply-chain best practices, and Agent Guard. The plugin ships the off
 JFrog [Agent Skills](https://opencode.ai/docs/skills/) with the package and registers
 them with OpenCode at load time, plus the JFrog Platform MCP server.
 
+> **Install flow:** Follow the [shared install, verify, and recovery guide](https://github.com/jfrog/claude-plugin/blob/main/docs/shared-install-and-verify.md) for the cross-harness rules on initialization, environment variables, restart, verification, and recovery. This README documents **OpenCode-only** differences.
+>
+> **Related OpenCode work:** installation doc improvements ([AX-1780](https://jfrog-int.atlassian.net/browse/AX-1780)) and init support ([AX-2122](https://jfrog-int.atlassian.net/browse/AX-2122), [AX-2124](https://jfrog-int.atlassian.net/browse/AX-2124)).
+
 ## Features
 
 The JFrog plugin provides the following capabilities, grouped by component:
@@ -57,6 +61,19 @@ OpenCode resolves the package from npm and loads it. To pin a specific version u
 release. For an organization-wide rollout, set the plugin in OpenCode's
 [remote configuration](https://opencode.ai/docs/config/#remote) so every developer
 gets it automatically.
+
+**Restart OpenCode completely** after editing `opencode.json` or changing any JFrog
+environment variable. Starting a new session, or reloading the window, is not enough —
+the plugin reads its configuration at load time.
+
+#### Config file location
+
+| Platform | Path |
+| --- | --- |
+| macOS / Linux | `~/.config/opencode/opencode.json` |
+| Windows | `%APPDATA%\opencode\opencode.json` |
+
+OpenCode Desktop and the CLI share this config.
 
 ### Local development
 
@@ -143,6 +160,24 @@ model context on every request (OpenCode has no lazy tool loading), measured at 
 `JFROG_MCP_DISABLE=true` or narrow the surface with `tools` globbing. The bundled
 **skills** do not carry this cost — only their short descriptions stay in context, and a
 skill's body loads only when it is invoked.
+
+---
+
+## Verify
+
+Verification is a required install step, not a troubleshooting fallback. After
+restarting OpenCode, confirm all four:
+
+1. OpenCode's startup output resolves `@jfrog/opencode-jfrog-plugin` without a plugin load error.
+2. `/skills` in a session — `jfrog` and the other bundled skills are listed.
+3. `opencode mcp list` — `jfrog` shows as connected after `opencode mcp auth jfrog`.
+   (Skip this if you set `JFROG_MCP_DISABLE=true`.)
+4. `jf rt ping` — succeeds against your configured JFrog server.
+
+Skills loading while the MCP stays disconnected usually means `JFROG_PLATFORM_URL` was
+set after OpenCode started, or the OAuth sign-in has not been completed. Setting
+environment variables without a full restart does not repair it — see the
+[shared recovery playbook](https://github.com/jfrog/claude-plugin/blob/main/docs/shared-install-and-verify.md#recovery-playbook).
 
 ---
 
