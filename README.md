@@ -29,7 +29,7 @@ Before installing, make sure you have:
 - **JFrog host** — A [JFrog Platform](https://jfrog.com) instance you can authenticate against, exposed to the plugin as `JFROG_PLATFORM_URL` (e.g. `mycompany.jfrog.io`). The JFrog Platform MCP server authenticates via OAuth (browser sign-in).
 - **OpenCode** — Installed (verified against OpenCode **1.17.7** and newer, which honors `config.skills.paths` in object form).
 - **Node.js** (≥ 18) — with `npx` on your `PATH` (used by the Agent Guard).
-- **Skill runtime requirements** — `jf` CLI, `jq`, and `curl` on `PATH`, plus a configured JFrog CLI server. For the minimum versions, see the upstream skills [`Requirements`](https://github.com/jfrog/jfrog-skills/blob/v0.22.0/README.md#requirements). Configure the CLI with `jf login` / `jf config add` — see [Authentication](#authentication).
+- **Skill runtime requirements** — `jf` CLI, `jq`, and `curl` on `PATH`, plus a configured JFrog CLI server. For the minimum versions, see the upstream skills [`Requirements`](https://github.com/jfrog/jfrog-skills/blob/main/README.md#requirements). Configure the CLI with `jf login` / `jf config add` — see [Authentication](#authentication).
 - **JFrog AI Catalog** (optional) — If you want to use the Agent Guard feature, your JFrog subscription needs to include the AI Catalog entitlement. Contact your JFrog account team if you're unsure whether it's enabled.
 - **JFrog CLI ≥ 2.105.0** (optional) — If you want the Agent Guard to auto-resolve the credentials/server ID from the JFrog CLI configuration.
 - **JFrog project** (optional) — If you want to use the Agent Guard feature.
@@ -214,7 +214,7 @@ The `skills/` tree is vendored from
 [`jfrog/jfrog-skills`](https://github.com/jfrog/jfrog-skills) at the version pinned in
 [`sync-skills-vendor.json`](sync-skills-vendor.json). To pull a newer upstream release:
 
-1. Bump `pin` in `sync-skills-vendor.json` to the new tag (e.g. `v0.23.0`).
+1. Bump `pin` in `sync-skills-vendor.json` to the new upstream tag.
 2. Re-sync and commit the refreshed tree:
 
    ```bash
@@ -223,9 +223,7 @@ The `skills/` tree is vendored from
 
    It downloads the pinned tarball from `codeload.github.com` and replaces the
    directories listed in `paths` (today: `skills/`).
-3. Update the pinned-version link in the [Prerequisites](#prerequisites) section so the
-   skill runtime requirements point at the new tag.
-4. Cut a plugin release so the new skills ship to users (see [Release](#release)).
+3. Cut a plugin release so the new skills ship to users (see [Release](#release)).
    Until a release is published, installed plugins keep using the previously vendored
    skills.
 
@@ -234,13 +232,13 @@ CI runs `mise run sync-skills:check`, which re-vendors and fails if the committe
 
 ---
 
-## Upgrading from < 0.0.3
+## Upgrading from legacy skill layout
 
 This release changes behavior in ways that are **not** backward compatible:
 
 - **Skill catalog changed.** The previous Artifactory skills — `skill-install`, `skill-publish`, `jfrog-cli`, `opencode-jfrog-mcp`, `jfrog-curation`, `jfrog-packages` — are replaced by the canonical vendored skills above. Invocations of the removed skill names no longer exist; that functionality now folds into the `jfrog` skill.
-- **Package-manager auto-setup was removed.** Earlier versions ran `jf setup <pm>` automatically on session start; that is gone. Durable package-manager setup is provided by the `jfrog-setup-package-managers` skill.
-- **Old skills are not auto-cleaned.** The plugin no longer touches `~/.config/opencode/skills`. If you used a version < 0.0.3, remove the old managed skill directories yourself under `~/.config/opencode/skills`.
+- **Package-manager auto-setup was removed.** Earlier releases ran `jf setup <pm>` automatically on session start; that is gone. Durable package-manager setup is provided by the `jfrog-setup-package-managers` skill.
+- **Old skills are not auto-cleaned.** The plugin no longer touches `~/.config/opencode/skills`. If you used a legacy release with runtime-managed skills, remove the old managed skill directories yourself under `~/.config/opencode/skills`.
 - **No more runtime artifacts.** The plugin no longer injects instructions files or writes local package-manager state, and it no longer downloads skills at runtime.
 - **Dependencies resolve from public npm.** Internal registry references were removed; the build and CI now resolve from public npm.
 
