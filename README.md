@@ -5,8 +5,6 @@ scanning, supply-chain best practices, and Agent Guard. The plugin ships the off
 JFrog [Agent Skills](https://opencode.ai/docs/skills/) with the package and registers
 them with OpenCode at load time, plus the JFrog Platform MCP server.
 
-> **Install flow:** Follow the [shared install, verify, and recovery guide](https://github.com/jfrog/claude-plugin/blob/main/docs/shared-install-and-verify.md) for the cross-harness rules on initialization, environment variables, restart, verification, and recovery. This README documents **OpenCode-only** differences.
->
 > **Related OpenCode work:** installation doc improvements ([AX-1780](https://jfrog-int.atlassian.net/browse/AX-1780)) and init support ([AX-2122](https://jfrog-int.atlassian.net/browse/AX-2122), [AX-2124](https://jfrog-int.atlassian.net/browse/AX-2124)).
 
 ## Features
@@ -176,8 +174,13 @@ restarting OpenCode, confirm all four:
 
 Skills loading while the MCP stays disconnected usually means `JFROG_PLATFORM_URL` was
 set after OpenCode started, or the OAuth sign-in has not been completed. Setting
-environment variables without a full restart does not repair it — see the
-[shared recovery playbook](https://github.com/jfrog/claude-plugin/blob/main/docs/shared-install-and-verify.md#recovery-playbook).
+environment variables without a full restart does not repair it.
+
+| Symptom | Do this | Do **not** do this |
+| --- | --- | --- |
+| MCP disconnected after install | Set `JFROG_PLATFORM_URL` in the environment that **launches** OpenCode, run `opencode mcp auth jfrog`, **quit and restart OpenCode**, then `opencode mcp list`. | Expect a new session or window reload to pick up env vars. |
+| Skills load but MCP is missing | Confirm `JFROG_MCP_DISABLE` is not `true`, set the host before start, complete OAuth. | Set `JFROG_ACCESS_TOKEN` — MCP auth is OAuth only. |
+| Config change not applied | Edit `opencode.json`, then fully quit and restart OpenCode. | Start a new chat without restarting. |
 
 ---
 
