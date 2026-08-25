@@ -5,8 +5,6 @@ scanning, supply-chain best practices, and Agent Guard. The plugin ships the off
 JFrog [Agent Skills](https://opencode.ai/docs/skills/) with the package and registers
 them with OpenCode at load time, plus the JFrog Platform MCP server.
 
-> **Related OpenCode work:** installation doc improvements ([AX-1780](https://jfrog-int.atlassian.net/browse/AX-1780)) and init support ([AX-2122](https://jfrog-int.atlassian.net/browse/AX-2122), [AX-2124](https://jfrog-int.atlassian.net/browse/AX-2124)).
-
 ## Features
 
 The JFrog plugin provides the following capabilities, grouped by component:
