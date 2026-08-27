@@ -39,11 +39,12 @@ The result is a flat, committed tree:
 ```
 skills/
   jfrog/SKILL.md (+ references/ scripts/ assets/)
-  jfrog-package-safety-and-download/SKILL.md
-  jfrog-setup-package-managers/SKILL.md
-  jfrog-ai-catalog-skills/SKILL.md
+  jfrog-ai-catalog/SKILL.md
+  jfrog-init/SKILL.md
   jfrog-mcp-management/SKILL.md
+  jfrog-package-curation/SKILL.md
   jfrog-reference-architecture/SKILL.md
+  jfrog-setup-package-managers/SKILL.md
 ```
 
 > **Note:** the exact set of skill directories is whatever the pinned `jfrog/jfrog-skills` release

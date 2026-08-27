@@ -60,7 +60,7 @@ forbid() {
 
 require "dist/index.js"
 require "skills/jfrog/SKILL.md"
-require "skills/jfrog-package-safety-and-download/SKILL.md"
+require "skills/jfrog-package-curation/SKILL.md"
 
 forbid "(^|/)[^/]*-TEST-PLAN\\.md$"
 forbid "(^|/)[^/]*-TEST-RESULTS\\.md$"

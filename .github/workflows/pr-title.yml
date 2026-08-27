@@ -17,3 +17,9 @@ jobs:
       - uses: amannn/action-semantic-pull-request@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Sync PRs from jfrog-skills lead with [patch]/[minor]/[major] so the
+          # plugin release workflow ships on merge. Parse that prefix, then the
+          # conventional type (chore, feat, …).
+          headerPattern: '^(?:\[(?:patch|minor|major)\]\s+)?(\w*)(?:\(([\w$.\-*/ ]*)\))?: (.*)$'
+          headerPatternCorrespondence: type, scope, subject
