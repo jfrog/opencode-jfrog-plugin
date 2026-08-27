@@ -172,7 +172,10 @@ restarting OpenCode, confirm all four:
 
 Skills loading while the MCP stays disconnected usually means `JFROG_PLATFORM_URL` was
 set after OpenCode started, or the OAuth sign-in has not been completed. Setting
-environment variables without a full restart does not repair it.
+environment variables without a full restart does not repair it. If a check fails,
+see [Recovery](#recovery).
+
+## Recovery
 
 | Symptom | Do this | Do **not** do this |
 | --- | --- | --- |
