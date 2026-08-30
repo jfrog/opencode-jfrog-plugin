@@ -13,7 +13,7 @@ The JFrog plugin provides the following capabilities, grouped by component:
 | --- | --- | --- |
 | **MCP** | JFrog Platform MCP server | Registers the remote JFrog Platform MCP (`https://${JFROG_PLATFORM_URL}/mcp`, OAuth) into OpenCode's `config.mcp.jfrog`. Authenticate once with `opencode mcp auth jfrog`. Opt out with `JFROG_MCP_DISABLE=true`. |
 | **Skill** | JFrog Platform | Interact with Artifactory repositories, builds, permissions, users, access tokens, projects, release bundles, and platform administration via the JFrog CLI and REST/GraphQL APIs. Also covers security audits, CVE lookups, and Advanced Security exposure queries. |
-| **Skill** | Package safety & download | Check whether npm, Maven, PyPI, Go, and other packages are safe, curated, or allowed, then download them through Artifactory remote caches or curation-aware package managers. |
+| **Skill** | Package curation | Check whether npm, Maven, PyPI, Go, and other packages are safe, curated, or allowed, then download them through Artifactory remote caches or curation-aware package managers. |
 | **Skill** | Agent Guard | OpenCode manages MCPs through the JFrog Agent Guard. Discover, install, configure, update, and remove MCP servers from the JFrog AI Catalog approved for your project, and authenticate to remote HTTP MCPs via OAuth, API key, or bearer token. |
 
 The skills ship **with the plugin** (vendored and pinned) — they are **not** downloaded
@@ -162,7 +162,7 @@ grouped by capability.
 | "Create a scoped access token for CI." | Creates an access token with the requested scope. |
 | "Promote this release bundle to production." | Uses Lifecycle / Distribution APIs to promote the bundle. |
 
-### Package safety & download skill
+### Package curation skill
 
 | Ask the agent… | What happens |
 | --- | --- |
