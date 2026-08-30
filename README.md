@@ -58,6 +58,19 @@ release. For an organization-wide rollout, set the plugin in OpenCode's
 [remote configuration](https://opencode.ai/docs/config/#remote) so every developer
 gets it automatically.
 
+**Restart OpenCode completely** after editing `opencode.json` or changing any JFrog
+environment variable. Starting a new session, or reloading the window, is not enough —
+the plugin reads its configuration at load time.
+
+#### Config file location
+
+| Platform | Path |
+| --- | --- |
+| macOS / Linux | `~/.config/opencode/opencode.json` |
+| Windows | `%APPDATA%\opencode\opencode.json` |
+
+OpenCode Desktop and the CLI share this config.
+
 ### Local development
 
 Test an uncommitted checkout without publishing. Build the module, then point your
@@ -143,6 +156,32 @@ model context on every request (OpenCode has no lazy tool loading), measured at 
 `JFROG_MCP_DISABLE=true` or narrow the surface with `tools` globbing. The bundled
 **skills** do not carry this cost — only their short descriptions stay in context, and a
 skill's body loads only when it is invoked.
+
+---
+
+## Verify
+
+Verification is a required install step, not a troubleshooting fallback. After
+restarting OpenCode, confirm all four:
+
+1. OpenCode's startup output resolves `@jfrog/opencode-jfrog-plugin` without a plugin load error.
+2. `/skills` in a session — `jfrog` and the other bundled skills are listed.
+3. `opencode mcp list` — `jfrog` shows as connected after `opencode mcp auth jfrog`.
+   (Skip this if you set `JFROG_MCP_DISABLE=true`.)
+4. `jf rt ping` — succeeds against your configured JFrog server.
+
+Skills loading while the MCP stays disconnected usually means `JFROG_PLATFORM_URL` was
+set after OpenCode started, or the OAuth sign-in has not been completed. Setting
+environment variables without a full restart does not repair it. If a check fails,
+see [Recovery](#recovery).
+
+## Recovery
+
+| Symptom | Do this | Do **not** do this |
+| --- | --- | --- |
+| MCP disconnected after install | Set `JFROG_PLATFORM_URL` in the environment that **launches** OpenCode, run `opencode mcp auth jfrog`, **quit and restart OpenCode**, then `opencode mcp list`. | Expect a new session or window reload to pick up env vars. |
+| Skills load but MCP is missing | Confirm `JFROG_MCP_DISABLE` is not `true`, set the host before start, complete OAuth. | Set `JFROG_ACCESS_TOKEN` — MCP auth is OAuth only. |
+| Config change not applied | Edit `opencode.json`, then fully quit and restart OpenCode. | Start a new chat without restarting. |
 
 ---
 
