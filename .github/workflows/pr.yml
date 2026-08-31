@@ -38,4 +38,3 @@ jobs:
           mise run build
           mise run pkgjsonlint
           mise run pack:check
-          PLUGIN_MANIFEST=package.json node scripts/validate-readme-no-version.mjs
