@@ -13,7 +13,7 @@ The JFrog plugin provides the following capabilities, grouped by component:
 | --- | --- | --- |
 | **MCP** | JFrog Platform MCP server | Registers the remote JFrog Platform MCP (`https://${JFROG_PLATFORM_URL}/mcp`, OAuth) into OpenCode's `config.mcp.jfrog`. Authenticate once with `opencode mcp auth jfrog`. Opt out with `JFROG_MCP_DISABLE=true`. |
 | **Skill** | JFrog Platform | Interact with Artifactory repositories, builds, permissions, users, access tokens, projects, release bundles, and platform administration via the JFrog CLI and REST/GraphQL APIs. Also covers security audits, CVE lookups, and Advanced Security exposure queries. |
-| **Skill** | Package safety & download | Check whether npm, Maven, PyPI, Go, and other packages are safe, curated, or allowed, then download them through Artifactory remote caches or curation-aware package managers. |
+| **Skill** | Package curation | Check whether npm, Maven, PyPI, Go, and other packages are safe, curated, or allowed, then download them through Artifactory remote caches or curation-aware package managers. |
 | **Skill** | Agent Guard | OpenCode manages MCPs through the JFrog Agent Guard. Discover, install, configure, update, and remove MCP servers from the JFrog AI Catalog approved for your project, and authenticate to remote HTTP MCPs via OAuth, API key, or bearer token. |
 
 The skills ship **with the plugin** (vendored and pinned) — they are **not** downloaded
@@ -57,6 +57,19 @@ OpenCode resolves the package from npm and loads it. To pin a specific version u
 release. For an organization-wide rollout, set the plugin in OpenCode's
 [remote configuration](https://opencode.ai/docs/config/#remote) so every developer
 gets it automatically.
+
+**Restart OpenCode completely** after editing `opencode.json` or changing any JFrog
+environment variable. Starting a new session, or reloading the window, is not enough —
+the plugin reads its configuration at load time.
+
+#### Config file location
+
+| Platform | Path |
+| --- | --- |
+| macOS / Linux | `~/.config/opencode/opencode.json` |
+| Windows | `%APPDATA%\opencode\opencode.json` |
+
+OpenCode Desktop and the CLI share this config.
 
 ### Local development
 
@@ -146,6 +159,32 @@ skill's body loads only when it is invoked.
 
 ---
 
+## Verify
+
+Verification is a required install step, not a troubleshooting fallback. After
+restarting OpenCode, confirm all four:
+
+1. OpenCode's startup output resolves `@jfrog/opencode-jfrog-plugin` without a plugin load error.
+2. `/skills` in a session — `jfrog` and the other bundled skills are listed.
+3. `opencode mcp list` — `jfrog` shows as connected after `opencode mcp auth jfrog`.
+   (Skip this if you set `JFROG_MCP_DISABLE=true`.)
+4. `jf rt ping` — succeeds against your configured JFrog server.
+
+Skills loading while the MCP stays disconnected usually means `JFROG_PLATFORM_URL` was
+set after OpenCode started, or the OAuth sign-in has not been completed. Setting
+environment variables without a full restart does not repair it. If a check fails,
+see [Recovery](#recovery).
+
+## Recovery
+
+| Symptom | Do this | Do **not** do this |
+| --- | --- | --- |
+| MCP disconnected after install | Set `JFROG_PLATFORM_URL` in the environment that **launches** OpenCode, run `opencode mcp auth jfrog`, **quit and restart OpenCode**, then `opencode mcp list`. | Expect a new session or window reload to pick up env vars. |
+| Skills load but MCP is missing | Confirm `JFROG_MCP_DISABLE` is not `true`, set the host before start, complete OAuth. | Set `JFROG_ACCESS_TOKEN` — MCP auth is OAuth only. |
+| Config change not applied | Edit `opencode.json`, then fully quit and restart OpenCode. | Start a new chat without restarting. |
+
+---
+
 ## Usage
 
 Once configured, interact with the JFrog plugin through natural language. Examples are
@@ -162,7 +201,7 @@ grouped by capability.
 | "Create a scoped access token for CI." | Creates an access token with the requested scope. |
 | "Promote this release bundle to production." | Uses Lifecycle / Distribution APIs to promote the bundle. |
 
-### Package safety & download skill
+### Package curation skill
 
 | Ask the agent… | What happens |
 | --- | --- |
