@@ -43,22 +43,22 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --tags origin
-          # grep -E drops prerelease and suffixed tags that the glob still matches, so only
-          # X.Y.Z releases take part in the comparison.
-          LATEST=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+          # grep exits 1 when no tag matches, which pipefail would turn into a step failure —
+          # an empty LATEST is the legitimate first-release case, handled just below.
+          LATEST=$(git tag -l | { grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; } | sort -V | tail -1)
           if [ -z "$LATEST" ]; then
             echo "should_release=true" >> "$GITHUB_OUTPUT"
             echo "No prior release tag — v${VERSION} will be the first release"
             exit 0
           fi
           LATEST_VERSION="${LATEST#v}"
-          if [[ "$VERSION" == "$LATEST_VERSION" ]]; then
+          if [ "$VERSION" = "$LATEST_VERSION" ]; then
             echo "::error::v${VERSION} was already released — bump package.json before merging"
             exit 1
           fi
           TAG_FOR_VERSION="v${VERSION}"
           LOWEST=$(printf '%s\n%s\n' "$TAG_FOR_VERSION" "$LATEST" | sort -V | head -1)
-          if [[ "$LOWEST" == "$TAG_FOR_VERSION" ]]; then
+          if [ "$LOWEST" = "$TAG_FOR_VERSION" ]; then
             echo "::error::package.json version ${VERSION} is older than the latest release ${LATEST} — check for an accidental revert"
             exit 1
           fi
@@ -83,7 +83,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
-        run: gh release delete "v${VERSION}" --yes --cleanup-tag || true
+        run: |
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            gh release delete "v${VERSION}" --yes --cleanup-tag
+          fi
 
   dispatch-publish:
     needs: release

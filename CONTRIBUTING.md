@@ -20,7 +20,7 @@ Thank you for your interest in contributing!
    mise run test
    mise run lint
    ```
-5. Bump the `version` field in `package.json` — see [Releasing](#releasing)
+5. Bump the `version` field in `package.json` — required on every PR to `main`; see [Releasing](#releasing)
 6. Commit with a descriptive message ([Conventional Commits](https://www.conventionalcommits.org/)
    style is welcome, but nothing enforces it)
 7. Push and open a Pull Request
