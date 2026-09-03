@@ -1,5 +1,9 @@
 # Changelog
 
+> **Note:** This file is frozen as of v0.3.0. Release notes for later versions are generated per
+> release and live on the [GitHub Releases](https://github.com/jfrog/opencode-jfrog-plugin/releases)
+> page.
+
 ## [0.3.0](https://github.com/jfrog/opencode-jfrog-plugin/compare/v0.2.0...v0.3.0) (2026-08-18)
 
 ### ⚠ BREAKING CHANGES
@@ -22,8 +26,3 @@
 ### Features
 
 - **mcp:** JFrog Platform remote MCP (token auth) + install hint ([#19](https://github.com/jfrog/opencode-jfrog-plugin/issues/19)) ([5948dae](https://github.com/jfrog/opencode-jfrog-plugin/commit/5948dae1a2bfabb02afbb07b06d60d1b255a7ecb))
-
----
-
-This file is frozen as of v0.3.0. Release notes for later versions are generated per release and
-live on the [GitHub Releases](https://github.com/jfrog/opencode-jfrog-plugin/releases) page.
