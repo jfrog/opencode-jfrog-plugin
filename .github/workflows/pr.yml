@@ -21,6 +21,18 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
+      # Format only — whether the version is actually newer is decided by release.yml against the
+      # tags on main. Catching a malformed version here keeps that failure out of the merge.
+      - name: Validate package.json version format
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -er '.version' package.json)
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json version '$VERSION' is not X.Y.Z — releases are cut from this field"
+            exit 1
+          fi
+          echo "package.json version $VERSION is a releasable X.Y.Z"
+
       - name: Setup Tooling
         uses: jdx/mise-action@d6e32c1796099e0f1f3ac741c220a8b7eae9e5dd
         with:

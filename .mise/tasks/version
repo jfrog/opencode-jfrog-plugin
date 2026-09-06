@@ -1,38 +1,23 @@
 #!/usr/bin/env bash
-#MISE description="Bump version - handles 'next' prerelease or syncs after 'latest'"
-#USAGE flag "-t --tag <tag>" "Tag for versioning strategy (next|latest)" default="next"
+#MISE description="Bump the package.json version that releases are cut from"
+#USAGE flag "-b --bump <bump>" "Version part to bump (major|minor|patch)" default="patch"
 
 set -e
 
-echo "Bumping version"
-echo " > with tag: ${usage_tag}..."
+case "${usage_bump}" in
+major | minor | patch) ;;
+*)
+	echo "❌ Unknown bump: ${usage_bump}"
+	echo "   Use: --bump patch (default), --bump minor or --bump major"
+	exit 1
+	;;
+esac
 
-# When bumping "next": prerelease bump only
-# When "latest": release-please handles it, but we sync "next" to be ahead
-if [ "${usage_tag}" = "next" ]; then
-  echo "Bumping prerelease version for 'next' tag..."
-  bun pm version prerelease
-  echo " > Next version: $(jq -r '.version' package.json)"
-  
-elif [ "${usage_tag}" = "latest" ]; then
-  echo "Syncing 'next' tag to be ahead of 'latest'..."
-  echo "(Note: 'latest' version should already be bumped by release-please)"
-  
-  # Get current version (should be latest after release-please)
-  LATEST_VERSION=$(jq -r '.version' package.json)
-  echo " > Latest version: $LATEST_VERSION"
-  
-  # Bump to next prerelease (X.Y.Z -> X.Y.(Z+1)-prerelease.0)
-  echo " > Bumping 'next' to be ahead of latest..."
-  bun pm version prerelease
-  
-  NEXT_VERSION=$(jq -r '.version' package.json)
-  echo " > Next version: $NEXT_VERSION"
-  
-else
-  echo "❌ Unknown tag: ${usage_tag}"
-  echo "   Use: --tag next (default) or --tag latest"
-  exit 1
-fi
+echo "Bumping ${usage_bump} version"
 
-echo "Version bump completed!"
+# No git tag: release.yml compares package.json against the tags on main, so a local tag would
+# look like an already-shipped release. The tag is created by the GitHub Release.
+bun pm version "${usage_bump}" --no-git-tag-version
+
+echo " > New version: $(jq -r '.version' package.json)"
+echo "Commit the bump and merge it to main to release it."

@@ -299,12 +299,16 @@ Tasks are run with [mise](https://mise.jdx.dev/):
 
 ## Release
 
-Releases are automated with [release-please](https://github.com/googleapis/release-please):
-merge Conventional-Commit PRs (`feat:`, `fix:`, …) to `main`, and release-please opens a
-release PR that bumps the version and updates the changelog. Merging that PR tags the
-release and publishes to npm. See [RELEASE.md](RELEASE.md) for details.
+Releases are cut automatically by [`.github/workflows/release.yml`](.github/workflows/release.yml)
+when a commit lands on `main` with a `package.json` version newer than the latest release tag.
+The workflow creates a GitHub Release (and tag), then dispatches npm publishing via
+[`publish-as-is.yml`](.github/workflows/publish-as-is.yml) (OIDC trusted publishing).
 
-> Do **not** hand-edit the `version` in `package.json` — release-please manages it.
+1. In your PR, bump the `version` field in [`package.json`](package.json).
+2. Merge to `main`.
+
+Release notes are generated from merged PRs/commits since the last tag (`gh release create
+--generate-notes`). `CHANGELOG.md` is not auto-updated.
 
 ---
 

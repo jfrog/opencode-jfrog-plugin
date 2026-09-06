@@ -5,6 +5,10 @@ on:
   repository_dispatch:
     types: [publish-package-as-is]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read
@@ -13,10 +17,31 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      # repository_dispatch checks out the default branch by default; the payload from release.yml
+      # pins this to the released commit so the published version matches the release.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.client_payload.ref || github.sha }}
           fetch-depth: 0
           fetch-tags: true
+
+      # npm provenance attests GITHUB_SHA (the default-branch HEAD on repository_dispatch), not
+      # the checkout ref. Refuse to publish when those differ so we never attest the wrong commit.
+      # Recovery: re-run this workflow via workflow_dispatch on the release tag.
+      - name: Refuse mismatched npm provenance
+        if: github.event_name == 'repository_dispatch'
+        env:
+          PAYLOAD_REF: ${{ github.event.client_payload.ref }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PAYLOAD_REF" ]; then
+            echo "::error::repository_dispatch is missing client_payload.ref"
+            exit 1
+          fi
+          if [ "$GITHUB_SHA" != "$PAYLOAD_REF" ]; then
+            echo "::error::GITHUB_SHA ($GITHUB_SHA) is default-branch HEAD, but checkout is $PAYLOAD_REF. npm provenance would attest the wrong commit. Re-run publish-as-is.yml via workflow_dispatch on the vX.Y.Z tag."
+            exit 1
+          fi
 
       - uses: jdx/mise-action@d6e32c1796099e0f1f3ac741c220a8b7eae9e5dd
         with:
@@ -32,4 +57,4 @@ jobs:
           # set npmjs.com as the registry
           npm config set registry https://registry.npmjs.org/
           echo "Publishing version as is"
-          mise run publish  
+          mise run publish
