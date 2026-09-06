@@ -15,7 +15,7 @@ The vendoring source is declared in `sync-skills-vendor.json` at the repo root:
 ```json
 {
   "repo": "jfrog/jfrog-skills",
-  "pin": "v0.22.0",
+  "pin": "<upstream-tag>",
   "paths": ["skills"]
 }
 ```
@@ -23,7 +23,7 @@ The vendoring source is declared in `sync-skills-vendor.json` at the repo root:
 | Field   | Meaning                                                                                     |
 | ------- | ------------------------------------------------------------------------------------------- |
 | `repo`  | The upstream GitHub repository (`owner/name`) to vendor from.                               |
-| `pin`   | The exact upstream ref to vendor (a tag, e.g. `v0.16.0`). Pin to a tag for reproducibility. |
+| `pin`   | The exact upstream release tag to vendor. Pin to a tag for reproducibility.                |
 | `paths` | The paths within the upstream repo to copy into this repo root. Currently just `skills`.    |
 
 ## How the sync works
@@ -47,14 +47,15 @@ skills/
 ```
 
 > **Note:** the exact set of skill directories is whatever the pinned `jfrog/jfrog-skills` release
-> ships under `skills/` — the sync copies the whole tree. `jfrog-mcp-management/` (JFrog Agent Guard
-> MCP management, including the OpenCode harness) is included as of the pinned `v0.22.0`.
+> ships under `skills/` — the sync copies the whole tree.
+
+The README deliberately omits release numbers. [`package.json`](package.json) and GitHub tags/releases are the authoritative plugin-version sources; `sync-skills-vendor.json` is the authoritative skills pin.
 
 The script is dependency-free Node ESM and makes no changes outside the vendored `paths`.
 
 ## Bumping the pin
 
-1. Edit `sync-skills-vendor.json` and set `pin` to the new upstream tag (e.g. `v0.12.0`).
+1. Edit `sync-skills-vendor.json` and set `pin` to the new upstream release tag.
 2. Re-vendor:
 
    ```bash
@@ -66,7 +67,7 @@ The script is dependency-free Node ESM and makes no changes outside the vendored
 
    ```bash
    git add sync-skills-vendor.json skills
-   git commit -m "feat(skills): vendor jfrog-skills@v0.12.0"
+   git commit -m "feat(skills): update vendored jfrog-skills"
    ```
 
 4. Cut a plugin release so the new skills ship to users. Until a release is published, installed plugins
