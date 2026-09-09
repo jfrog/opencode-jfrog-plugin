@@ -41,7 +41,8 @@ skills/
   jfrog/SKILL.md (+ references/ scripts/ assets/)
   jfrog-package-curation/SKILL.md
   jfrog-setup-package-managers/SKILL.md
-  jfrog-ai-catalog-skills/SKILL.md
+  jfrog-ai-catalog/SKILL.md
+  jfrog-init/SKILL.md
   jfrog-mcp-management/SKILL.md
   jfrog-reference-architecture/SKILL.md
 ```
