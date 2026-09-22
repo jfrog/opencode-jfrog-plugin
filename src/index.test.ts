@@ -204,9 +204,10 @@ describe('vendored skills content sanity (V9)', () => {
   const skillsDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills');
   const EXPECTED_SKILLS = [
     'jfrog',
-    'jfrog-ai-catalog-skills',
+    'jfrog-ai-catalog',
+    'jfrog-init',
     'jfrog-mcp-management',
-    'jfrog-package-safety-and-download',
+    'jfrog-package-curation',
     'jfrog-reference-architecture',
     'jfrog-setup-package-managers',
   ];
